@@ -1,0 +1,25 @@
+{
+  "name": "liberacao_tenis_dass",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "node dist/index.ts",
+    "dev": "DEV_ENV=development nodemon --watch './**/*.ts' --exec ts-node ./src/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "express": "^5.2.1",
+    "typeorm": "^0.3.28"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "typescript": "^5.9.3"
+  }
+}
