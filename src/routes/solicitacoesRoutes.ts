@@ -7,10 +7,16 @@ import {
   postSolicitacaoRejeitar,
   postSolicitacoes,
 } from "../controllers/solicitacao.controller";
+import { validateRequest } from "../middleware/validate";
+import { createSolicitacaoSchema } from "../schemas/solicitacao.schema";
 
 const solicitacoesRouter = Router();
 
-solicitacoesRouter.post("/solicitacoes", postSolicitacoes);
+solicitacoesRouter.post(
+  "/solicitacoes",
+  validateRequest("body", createSolicitacaoSchema),
+  postSolicitacoes
+);
 solicitacoesRouter.get("/solicitacoes", getSolicitacoes);
 solicitacoesRouter.get("/solicitacoes/:id", getSolicitacaoById);
 solicitacoesRouter.post("/solicitacoes/:id/aprovar", postSolicitacaoAprovar);

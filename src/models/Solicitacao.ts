@@ -72,8 +72,8 @@ export class SolicitacaoBrinde {
   @Column({ type: 'int2' })
   num_calce!: number;
 
-  @Column({ type: 'bool', default: false })
-  entregue!: boolean;
+  @Column({ type: 'bool', default: false, nullable: true })
+  entregue?: boolean;
 
   @Column({ type: 'int8', nullable: true })
   entregue_por?: number;

@@ -7,14 +7,14 @@ import {
   obterSolicitacaoPorId,
   rejeitarSolicitacao,
 } from "../services/solicitacao.service";
+import { CreateSolicitacaoInput } from "../schemas/solicitacao.schema";
 
-export const postSolicitacoes = async (_req: Request, res: Response): Promise<void> => {
-  console.log('nova solicitação');
-  console.log(_req.body);
-  
-  // const result = await criarSolicitacao();
-  res.send('test')
-  // res.status(201).json(result.body);
+export const postSolicitacoes = async (
+  req: Request<{}, {}, CreateSolicitacaoInput>,
+  res: Response
+): Promise<void> => {
+  const result = await criarSolicitacao(req.body);
+  res.status(result.status).json(result.body);
 };
 
 export const getSolicitacoes = async (_req: Request, res: Response): Promise<void> => {

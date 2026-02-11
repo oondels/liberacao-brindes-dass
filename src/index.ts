@@ -3,6 +3,7 @@ import apiRouter from "./routes/index";
 import cookieParser from "cookie-parser";
 import cors from "cors"
 import { AppDataSource } from "./config/db";
+import { config } from "./config/dotenv"
 
 const bootstrap = async () => {
   await AppDataSource.initialize()
@@ -12,7 +13,7 @@ const bootstrap = async () => {
   app.use(express.json());
   app.use(cookieParser());
 
-  const port = 2307;
+  const port = config.port;
 
   app.get("/", (req: Request, res: Response) => res.send("App liberacao de brindes esta rodando!"));
 
