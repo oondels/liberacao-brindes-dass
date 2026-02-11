@@ -2,6 +2,7 @@ import path from "path";
 import { DataSource } from "typeorm";
 import { config } from "./dotenv";
 import { SolicitacaoBrinde } from "../models/Solicitacao";
+import { VoucherSolicitacao } from "../models/VoncherSolicitacao";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -12,7 +13,7 @@ export const AppDataSource = new DataSource({
   database: config.database.name,
   synchronize: false,
   logging: false,
-  entities: [SolicitacaoBrinde],
+  entities: [SolicitacaoBrinde, VoucherSolicitacao],
   subscribers: [],
   migrations: [path.join(__dirname, '../migrations/*.{ts,js}')],
   migrationsTableName: "liberacao_brinde",

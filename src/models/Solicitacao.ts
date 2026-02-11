@@ -6,7 +6,9 @@ import {
   UpdateDateColumn,
   Check,
   Index,
+  OneToOne
 } from 'typeorm';
+import { VoucherSolicitacao } from './VoncherSolicitacao';
 
 export enum TipoRequisicao {
   TESTE_CALCE = 'teste_calce',
@@ -53,12 +55,8 @@ export class SolicitacaoBrinde {
   })
   tipo_requisicao!: TipoRequisicao;
 
-  @Index({ unique: true })
-  @Column({ type: 'uuid', nullable: true })
-  codigo_unico?: string;
-
-  @Column({ type: 'timestamp', nullable: true })
-  data_codigo_usado?: Date;
+  @OneToOne(() => VoucherSolicitacao, (voucher) => voucher.solicitacao)
+  voucher?: VoucherSolicitacao;
 
   @Column({ type: 'int8' })
   usuario_criador!: number;
