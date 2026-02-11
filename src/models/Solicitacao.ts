@@ -8,7 +8,7 @@ import {
   Index,
   OneToOne
 } from 'typeorm';
-import { VoucherSolicitacao } from './VoncherSolicitacao';
+import { VoucherSolicitacao } from './VoucherSolicitacao';
 
 export enum TipoRequisicao {
   TESTE_CALCE = 'teste_calce',

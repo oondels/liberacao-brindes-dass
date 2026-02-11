@@ -2,7 +2,7 @@ import path from "path";
 import { DataSource } from "typeorm";
 import { config } from "./dotenv";
 import { SolicitacaoBrinde } from "../models/Solicitacao";
-import { VoucherSolicitacao } from "../models/VoncherSolicitacao";
+import { VoucherSolicitacao } from "../models/VoucherSolicitacao";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
