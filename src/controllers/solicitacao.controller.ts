@@ -7,7 +7,10 @@ import {
   obterSolicitacaoPorId,
   rejeitarSolicitacao,
 } from "../services/solicitacao.service";
-import { CreateSolicitacaoInput } from "../schemas/solicitacao.schema";
+import {
+  CreateSolicitacaoInput,
+  ListSolicitacaoQuery,
+} from "../schemas/solicitacao.schema";
 
 export const postSolicitacoes = async (
   req: Request<{}, {}, CreateSolicitacaoInput>,
@@ -15,11 +18,21 @@ export const postSolicitacoes = async (
 ): Promise<void> => {
   const result = await criarSolicitacao(req.body);
   res.status(result.status).json(result.body);
+  return;
 };
 
-export const getSolicitacoes = async (_req: Request, res: Response): Promise<void> => {
-  const result = await listarSolicitacoes();
-  res.status(result.status).json(result.body);
+export const getSolicitacoes = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const result = await listarSolicitacoes(req.query as unknown as ListSolicitacaoQuery);
+    res.status(result.status).json(result.body);
+  } catch (error) {
+    console.error("Erro ao listar solicitações: ", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+  return;
 };
 
 export const getSolicitacaoById = async (
