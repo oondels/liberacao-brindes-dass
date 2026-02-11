@@ -8,9 +8,10 @@
     "build": "tsc",
     "start": "node dist/index.ts",
     "dev": "NODE_ENV=development nodemon --watch './**/*.ts' --exec ts-node ./src/index.ts",
-    "migration:generate": "npm run typeorm migration:generate -- -d src/config/database.ts",
-    "migration:run": "npm run typeorm migration:run -- -d src/config/database.ts",
-    "migration:revert": "npm run typeorm migration:revert -- -d src/config/database.ts"
+    "typeorm": "typeorm-ts-node-commonjs",
+    "migration:generate": "npm run typeorm migration:generate -- -d src/config/db.ts",
+    "migration:run": "npm run typeorm migration:run -- -d src/config/db.ts",
+    "migration:revert": "npm run typeorm migration:revert -- -d src/config/db.ts"
   },
   "keywords": [],
   "author": "",

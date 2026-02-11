@@ -15,5 +15,5 @@ export const AppDataSource = new DataSource({
   entities: [SolicitacaoBrinde],
   subscribers: [],
   migrations: [path.join(__dirname, '../migrations/*.{ts,js}')],
-  migrationsTableName: "grava_nois_migrations",
+  migrationsTableName: "liberacao_brinde",
 })
