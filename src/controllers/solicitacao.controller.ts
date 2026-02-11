@@ -6,11 +6,15 @@ import {
   listarSolicitacoes,
   obterSolicitacaoPorId,
   rejeitarSolicitacao,
-} from "../services/solicitacaoService";
+} from "../services/solicitacao.service";
 
 export const postSolicitacoes = async (_req: Request, res: Response): Promise<void> => {
-  const result = await criarSolicitacao();
-  res.status(result.status).json(result.body);
+  console.log('nova solicitação');
+  console.log(_req.body);
+  
+  // const result = await criarSolicitacao();
+  res.send('test')
+  // res.status(201).json(result.body);
 };
 
 export const getSolicitacoes = async (_req: Request, res: Response): Promise<void> => {

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { biparRetirada, previewRetirada } from "../services/retiradaService";
+import { biparRetirada, previewRetirada } from "../services/retirada.service";
 
 export const getRetiradaPreview = async (
   _req: Request,
