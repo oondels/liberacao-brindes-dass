@@ -1,6 +1,6 @@
 import { Router } from "express";
-import retiradasRouter from "./retiradasRoutes";
-import solicitacoesRouter from "./solicitacoesRoutes";
+import retiradasRouter from "./retiradas.route";
+import solicitacoesRouter from "./solicitacoes.route";
 
 const apiRouter = Router();
 
