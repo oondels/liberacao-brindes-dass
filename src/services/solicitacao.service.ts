@@ -7,6 +7,9 @@ import {
 } from "../schemas/solicitacao.schema";
 import { ServiceResult } from "../types/service";
 import { TipoRequisicao, StatusSolicitacaoBrinde } from "../models/Solicitacao";
+import { CustomError } from "../types/CustomError";
+
+const repository = AppDataSource.getRepository(SolicitacaoBrinde);
 
 type SolicitacaoListPayload = {
   data: SolicitacaoBrinde[];
@@ -32,14 +35,13 @@ export const criarSolicitacao = async (
     const parsed = Number(value);
     return Number.isNaN(parsed) ? null : parsed;
   };
-
   const matricula = toNumber(input.matricula, "matricula");
   const numCalce = toNumber(input.num_calce, "num_calce");
   const rfid = input.rfid ? toNumber(input.rfid, "rfid") : null;
   const codbarras = input.codbarras ? toNumber(input.codbarras, "codbarras") : null;
 
   if (matricula === null || numCalce === null) {
-    return { status: 400, body: { error: "Campos numericos invalidos" } };
+    throw new CustomError("Campos numerios invalidos", 400)
   }
 
   try {
@@ -63,14 +65,15 @@ export const criarSolicitacao = async (
     const saved = await repository.save(solicitacao);
     return { status: 201, body: { data: saved } };
   } catch (error) {
-    return { status: 500, body: { error: "Erro ao criar solicitacao" } };
+    if (error instanceof CustomError) throw error;
+
+    throw new CustomError("Erro ao criar solicitação", 500)
   }
 };
 
 export const listarSolicitacoes = async (
   filters: ListSolicitacaoQuery
 ): Promise<ServiceResult<SolicitacaoResponse>> => {
-  const repository = AppDataSource.getRepository(SolicitacaoBrinde);
   const where: FindOptionsWhere<SolicitacaoBrinde> = {};
 
   if (filters.status) {
@@ -135,13 +138,26 @@ export const listarSolicitacoes = async (
       },
     };
   } catch (error) {
-    return { status: 500, body: { error: "Erro ao listar solicitacoes" } };
+    throw new CustomError("Erro ao listar solicitacoes", 500)
   }
 };
 
-export const obterSolicitacaoPorId = async (): Promise<ServiceResult<SolicitacaoResponse>> =>
-  notImplemented();
+export const obterSolicitacaoPorId = async (id: string): Promise<ServiceResult<SolicitacaoResponse>> => {
+  try {
+    const solicitacao = await repository.findOne({ where: { id } })
+    if (!solicitacao) throw new CustomError("Solicitação não encontrada", 404)
 
+    return {
+      body: {
+        data: solicitacao
+      },
+      status: 200
+    }
+  } catch (error) {
+    if (error instanceof CustomError) throw error
+    throw new CustomError(`Erro ao obter solicitação por id: ${id}`, 500)
+  }
+}
 export const aprovarSolicitacao = async (): Promise<ServiceResult<SolicitacaoResponse>> =>
   notImplemented();
 

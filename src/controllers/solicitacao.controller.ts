@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import {
   aprovarSolicitacao,
   cancelarSolicitacao,
@@ -14,11 +14,17 @@ import {
 
 export const postSolicitacoes = async (
   req: Request<{}, {}, CreateSolicitacaoInput>,
-  res: Response
+  res: Response,
+  next: NextFunction
 ): Promise<void> => {
-  const result = await criarSolicitacao(req.body);
-  res.status(result.status).json(result.body);
-  return;
+  try {
+    const result = await criarSolicitacao(req.body);
+    res.status(result.status).json(result.body);
+    return;
+  } catch (error) {
+    console.error("Erro ao criar solicitação. Entre em contato com a equipe de automação.", error);
+    next(error)
+  }
 };
 
 export const getSolicitacoes = async (
@@ -37,18 +43,31 @@ export const getSolicitacoes = async (
 
 export const getSolicitacaoById = async (
   _req: Request,
-  res: Response
+  res: Response,
+  next: NextFunction
 ): Promise<void> => {
-  const result = await obterSolicitacaoPorId();
-  res.status(result.status).json(result.body);
+  try {
+    const id = _req.params.id as string
+    const result = await obterSolicitacaoPorId(id);
+
+    res.status(result.status).json(result.body);
+  } catch (error) {
+    console.error("Erro ao buscar solicitação por id: ", error);
+    next(error)
+  }
 };
 
 export const postSolicitacaoAprovar = async (
   _req: Request,
-  res: Response
+  res: Response,
+  next: NextFunction
 ): Promise<void> => {
-  const result = await aprovarSolicitacao();
-  res.status(result.status).json(result.body);
+  try {
+    const result = await aprovarSolicitacao();
+    res.status(result.status).json(result.body);
+  } catch (error) {
+    next(error)
+  }
 };
 
 export const postSolicitacaoRejeitar = async (
