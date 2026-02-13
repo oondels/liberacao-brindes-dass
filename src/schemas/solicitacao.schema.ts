@@ -133,3 +133,9 @@ export const listSolicitacaoQuerySchema = z
   );
 
 export type ListSolicitacaoQuery = z.infer<typeof listSolicitacaoQuerySchema>;
+
+export const cancelSolicitacaoSchema = z.object({
+  motivo: z.string().trim().min(1, "Motivo do cancelamento é obrigatório"),
+});
+
+export type CancelSolicitacaoInput = z.infer<typeof cancelSolicitacaoSchema>;

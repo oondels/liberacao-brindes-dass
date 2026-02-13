@@ -1,7 +1,7 @@
 import { Between, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual } from "typeorm";
 import { AppDataSource } from "../config/db";
 import { SolicitacaoBrinde } from "../models/Solicitacao";
-import { VoucherSolicitacao } from "../models/VoucherSolicitacao";
+import { VoucherSolicitacao, StatusSVouncher } from "../models/VoucherSolicitacao";
 import {
   CreateSolicitacaoInput,
   ListSolicitacaoQuery,
@@ -219,8 +219,102 @@ export const aprovarSolicitacao = async (
   }
 }
 
-export const rejeitarSolicitacao = async (): Promise<ServiceResult<SolicitacaoResponse>> =>
-  notImplemented();
+export const rejeitarSolicitacao = async (
+  id: string,
+  usuario_id: number
+): Promise<ServiceResult<SolicitacaoResponse>> => {
+  const queryRunner = AppDataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
 
-export const cancelarSolicitacao = async (): Promise<ServiceResult<SolicitacaoResponse>> =>
-  notImplemented();
+  try {
+    const solicitacao = await queryRunner.manager.findOne(SolicitacaoBrinde, {
+      where: { id },
+    });
+
+    if (!solicitacao) {
+      throw new CustomError("Solicitação não encontrada", 404);
+    }
+
+    if (solicitacao.status !== StatusSolicitacaoBrinde.PENDENTE_APROVACAO) {
+      throw new CustomError("Solicitação não está pendente de aprovação", 400);
+    }
+
+    solicitacao.status = StatusSolicitacaoBrinde.REJEITADO;
+    solicitacao.updated_by = usuario_id;
+    solicitacao.updated_at = new Date();
+    await queryRunner.manager.save(SolicitacaoBrinde, solicitacao);
+
+    await queryRunner.commitTransaction();
+
+    return {
+      status: 200,
+      body: { data: solicitacao },
+    };
+  } catch (error) {
+    await queryRunner.rollbackTransaction();
+
+    if (error instanceof CustomError) throw error;
+    throw new CustomError("Erro ao rejeitar solicitação", 500);
+  } finally {
+    await queryRunner.release();
+  }
+};
+
+export const cancelarSolicitacao = async (
+  id: string,
+  motivo: string
+): Promise<ServiceResult<SolicitacaoResponse>> => {
+  const queryRunner = AppDataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
+  try {
+    const solicitacao = await queryRunner.manager.findOne(SolicitacaoBrinde, {
+      where: { id },
+      relations: ["voucher"],
+    });
+
+    if (!solicitacao) {
+      throw new CustomError("Solicitação não encontrada", 404);
+    }
+
+    const statusPermitidos = [
+      StatusSolicitacaoBrinde.PENDENTE_APROVACAO,
+      StatusSolicitacaoBrinde.APROVADO,
+    ];
+
+    if (!statusPermitidos.includes(solicitacao.status)) {
+      throw new CustomError(
+        "Solicitação não pode ser cancelada no status atual",
+        400
+      );
+    }
+
+    // Atualiza a solicitação
+    solicitacao.status = StatusSolicitacaoBrinde.CANCELADO;
+    solicitacao.updated_at = new Date();
+    await queryRunner.manager.save(SolicitacaoBrinde, solicitacao);
+
+    // Se houver voucher vinculado, cancela-o também
+    if (solicitacao.voucher) {
+      solicitacao.voucher.ativo = false;
+      solicitacao.voucher.status = StatusSVouncher.CANCELADO;
+      await queryRunner.manager.save(VoucherSolicitacao, solicitacao.voucher);
+    }
+
+    await queryRunner.commitTransaction();
+
+    return {
+      status: 200,
+      body: { data: solicitacao },
+    };
+  } catch (error) {
+    await queryRunner.rollbackTransaction();
+
+    if (error instanceof CustomError) throw error;
+    throw new CustomError("Erro ao cancelar solicitação", 500);
+  } finally {
+    await queryRunner.release();
+  }
+};

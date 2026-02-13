@@ -74,17 +74,31 @@ export const postSolicitacaoAprovar = async (
 };
 
 export const postSolicitacaoRejeitar = async (
-  _req: Request,
-  res: Response
+  req: Request,
+  res: Response,
+  next: NextFunction
 ): Promise<void> => {
-  const result = await rejeitarSolicitacao();
-  res.status(result.status).json(result.body);
+  try {
+    const id = req.params.id as string;
+    const usuario_id = Number(req.body?.usuario_id) || 1;
+    const result = await rejeitarSolicitacao(id, usuario_id);
+    res.status(result.status).json(result.body);
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const postSolicitacaoCancelar = async (
-  _req: Request,
-  res: Response
+  req: Request,
+  res: Response,
+  next: NextFunction
 ): Promise<void> => {
-  const result = await cancelarSolicitacao();
-  res.status(result.status).json(result.body);
+  try {
+    const id = req.params.id as string;
+    const { motivo } = req.body;
+    const result = await cancelarSolicitacao(id, motivo);
+    res.status(result.status).json(result.body);
+  } catch (error) {
+    next(error);
+  }
 };
