@@ -1,6 +1,7 @@
 import { Between, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual } from "typeorm";
 import { AppDataSource } from "../config/db";
 import { SolicitacaoBrinde } from "../models/Solicitacao";
+import { VoucherSolicitacao } from "../models/VoucherSolicitacao";
 import {
   CreateSolicitacaoInput,
   ListSolicitacaoQuery,
@@ -8,6 +9,7 @@ import {
 import { ServiceResult } from "../types/service";
 import { TipoRequisicao, StatusSolicitacaoBrinde } from "../models/Solicitacao";
 import { CustomError } from "../types/CustomError";
+import { nanoid } from "nanoid";
 
 const repository = AppDataSource.getRepository(SolicitacaoBrinde);
 
@@ -158,8 +160,64 @@ export const obterSolicitacaoPorId = async (id: string): Promise<ServiceResult<S
     throw new CustomError(`Erro ao obter solicitação por id: ${id}`, 500)
   }
 }
-export const aprovarSolicitacao = async (): Promise<ServiceResult<SolicitacaoResponse>> =>
-  notImplemented();
+export const aprovarSolicitacao = async (
+  id: string,
+  user_aprovador: number = 1
+): Promise<ServiceResult<SolicitacaoResponse>> => {
+  const queryRunner = AppDataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
+  try {
+    const solicitacao = await queryRunner.manager.findOne(SolicitacaoBrinde, {
+      where: { id },
+    });
+
+    if (!solicitacao) {
+      throw new CustomError("Solicitação não encontrada", 404);
+    }
+
+    if (solicitacao.status !== StatusSolicitacaoBrinde.PENDENTE_APROVACAO) {
+      throw new CustomError("Solicitação não está pendente de aprovação", 400);
+    }
+
+    // Atualiza a solicitação
+    solicitacao.status = StatusSolicitacaoBrinde.APROVADO;
+    solicitacao.gerente_aprovacao = user_aprovador;
+    const updateDate = new Date();
+    solicitacao.data_aprovado = updateDate;
+    solicitacao.updated_at = updateDate;
+    await queryRunner.manager.save(SolicitacaoBrinde, solicitacao);
+
+    // Cria o voucher vinculado
+    const voucher = queryRunner.manager.create(VoucherSolicitacao, {
+      codigo_voucher: nanoid(10),
+      ativo: true,
+      solicitacao,
+    });
+    await queryRunner.manager.save(VoucherSolicitacao, voucher);
+
+    await queryRunner.commitTransaction();
+
+    // Recarrega a solicitação com o voucher associado
+    const solicitacaoAtualizada = await repository.findOne({
+      where: { id },
+      relations: ["voucher"],
+    });
+
+    return {
+      status: 200,
+      body: { data: solicitacaoAtualizada! },
+    };
+  } catch (error) {
+    await queryRunner.rollbackTransaction();
+
+    if (error instanceof CustomError) throw error;
+    throw new CustomError("Erro ao aprovar solicitação", 500);
+  } finally {
+    await queryRunner.release();
+  }
+}
 
 export const rejeitarSolicitacao = async (): Promise<ServiceResult<SolicitacaoResponse>> =>
   notImplemented();

@@ -23,6 +23,9 @@ export class VoucherSolicitacao {
   @JoinColumn({ name: 'solicitacao_id' })
   solicitacao!: SolicitacaoBrinde;
 
+  @Column({ type: 'varchar', length: 20, unique: true })
+  codigo_voucher!: string;
+
   @Column({ type: 'enum', enum: StatusSVouncher, enumName: 'status_vouncher_solicitacao', default: StatusSVouncher.PENDENTE })
   status!: StatusSVouncher;
 
