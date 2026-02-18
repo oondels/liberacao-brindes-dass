@@ -14,7 +14,6 @@ export const validateRequest = (
   return (req: Request, res: Response, next: NextFunction) => {
     const result = schema.safeParse(req[type]);
     
-    
     if (!result.success) {
       const message = result.error.issues[0]?.message ?? "Requisição inválida";
       

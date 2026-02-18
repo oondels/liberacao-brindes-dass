@@ -65,7 +65,7 @@ export const postSolicitacaoAprovar = async (
   try {
     const id = req.params.id as string;
     // TODO: extrair usuario_aprovador_id da autenticação quando implementado
-    const usuario_aprovador_id = Number(req.body?.usuario_aprovador_id) || 1;
+    const usuario_aprovador_id = Number(req.body?.usuario_aprovador) || 1;
     const result = await aprovarSolicitacao(id, usuario_aprovador_id);
     res.status(result.status).json(result.body);
   } catch (error) {

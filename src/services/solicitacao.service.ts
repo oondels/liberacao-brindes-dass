@@ -211,6 +211,8 @@ export const aprovarSolicitacao = async (
     };
   } catch (error) {
     await queryRunner.rollbackTransaction();
+    console.log("Erro ao aprovar solicitação: ", error);
+    
 
     if (error instanceof CustomError) throw error;
     throw new CustomError("Erro ao aprovar solicitação", 500);
