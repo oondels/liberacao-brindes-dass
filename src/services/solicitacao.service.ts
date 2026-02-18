@@ -184,6 +184,7 @@ export const aprovarSolicitacao = async (
     // Atualiza a solicitação
     solicitacao.status = StatusSolicitacaoBrinde.APROVADO;
     solicitacao.gerente_aprovacao = user_aprovador;
+    solicitacao.updated_by = user_aprovador;
     const updateDate = new Date();
     solicitacao.data_aprovado = updateDate;
     solicitacao.updated_at = updateDate;
