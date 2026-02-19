@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { biparRetirada, previewRetirada } from "../services/retirada.service";
+import { BiparVoucherInput } from "../schemas/retirada.schema";
 
 export const getRetiradaPreview = async (
   _req: Request,
@@ -10,9 +11,10 @@ export const getRetiradaPreview = async (
 };
 
 export const postRetiradaBipar = async (
-  _req: Request,
+  req: Request,
   res: Response
 ): Promise<void> => {
-  const result = await biparRetirada();
+  const body = req.body as BiparVoucherInput;
+  const result = await biparRetirada(body);
   res.status(result.status).json(result.body);
 };
