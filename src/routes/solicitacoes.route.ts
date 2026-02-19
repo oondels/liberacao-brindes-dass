@@ -14,17 +14,19 @@ import {
   listSolicitacaoQuerySchema,
 } from "../schemas/solicitacao.schema";
 import { authenticateToken } from "../middleware/auth.middleware";
+import { createSolicitation } from "../middleware/createSolicitation.middleware";
+import { isManager } from "../middleware/manager.middleware";
 
 const solicitacoesRouter = Router();
 
 solicitacoesRouter.post(
   "/solicitacoes",
   authenticateToken,
+  createSolicitation,
   validateRequest("body", createSolicitacaoSchema),
   postSolicitacoes
 );
 
-// Protegida para somente modelagem e gerentes e portaria
 solicitacoesRouter.get(
   "/solicitacoes",
   authenticateToken,
@@ -32,11 +34,10 @@ solicitacoesRouter.get(
   getSolicitacoes
 );
 
-// Colocar rota protegida por autenticação quando implementada para somente gerente e portaria
 solicitacoesRouter.get("/solicitacoes/:id", authenticateToken, getSolicitacaoById);
 
-solicitacoesRouter.post("/solicitacoes/:id/aprovar", authenticateToken, postSolicitacaoAprovar);
-solicitacoesRouter.post("/solicitacoes/:id/rejeitar", authenticateToken, postSolicitacaoRejeitar);
+solicitacoesRouter.post("/solicitacoes/:id/aprovar", authenticateToken, isManager, postSolicitacaoAprovar);
+solicitacoesRouter.post("/solicitacoes/:id/rejeitar", authenticateToken, isManager, postSolicitacaoRejeitar);
 solicitacoesRouter.post(
   "/solicitacoes/:id/cancelar",
   authenticateToken,
