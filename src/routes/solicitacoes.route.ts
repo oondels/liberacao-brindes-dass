@@ -7,7 +7,7 @@ import {
   postSolicitacaoRejeitar,
   postSolicitacoes,
 } from "../controllers/solicitacao.controller";
-import { validateRequest } from "../middleware/validate";
+import { validateRequest } from "../middleware/validate.middleware";
 import {
   cancelSolicitacaoSchema,
   createSolicitacaoSchema,

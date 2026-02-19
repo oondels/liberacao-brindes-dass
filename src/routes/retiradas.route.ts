@@ -1,11 +1,12 @@
 import { Router } from "express";
 import { getRetiradaPreview, postRetiradaBipar } from "../controllers/retirada.controller";
-import { validateRequest } from "../middleware/validate";
+import { validateRequest } from "../middleware/validate.middleware";
 import { biparVoucherSchema } from "../schemas/retirada.schema";
+import {authenticateToken} from "../middleware/auth.middleware";
 
 const retiradasRouter = Router();
 
-retiradasRouter.get("/retiradas/:codigo_unico", getRetiradaPreview);
-retiradasRouter.post("/retiradas/bipar", validateRequest("body", biparVoucherSchema), postRetiradaBipar);
+retiradasRouter.get("/retiradas", authenticateToken, getRetiradaPreview);
+retiradasRouter.post("/retiradas/bipar", authenticateToken, validateRequest("body", biparVoucherSchema), postRetiradaBipar);
 
 export default retiradasRouter;

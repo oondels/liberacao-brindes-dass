@@ -22,6 +22,8 @@ const envSchema = z.object({
   REDIS_HOST: z.string().default('localhost'),
   REDIS_PORT: z.coerce.number().int().positive().default(6379),
   REDIS_PASS: z.string().default(''),
+
+  JWT_SECRET: z.string()
 });
 
 const envResult = envSchema.safeParse(process.env);
@@ -51,6 +53,8 @@ export const config = {
   env: CURRENT_ENV,
   port: env.PORT,
   rabbitmqUrl: env.RABBITMQ_URL || '',
+
+  jwtSecret: env.JWT_SECRET,
 
   redis: {
     host: env.REDIS_HOST,

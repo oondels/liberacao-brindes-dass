@@ -6,15 +6,22 @@ export const getRetiradaPreview = async (
   _req: Request,
   res: Response
 ): Promise<void> => {
-  const result = await previewRetirada();
-  res.status(result.status).json(result.body);
+  const result = "Teste de endpoint de retirada - preview (não implementado)";
+  const user = _req.user; // Acessa os dados do usuário autenticado
+  res.status(200).json({ result, user });
 };
 
 export const postRetiradaBipar = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const body = req.body as BiparVoucherInput;
-  const result = await biparRetirada(body);
+  const body = req.body;
+  const user = req.user;
+
+  const inputData = {
+    codigo_voucher: body.codigo_voucher,
+    matricula: user ? user.matricula : undefined,
+  }
+  const result = await biparRetirada(inputData as BiparVoucherInput & { matricula?: number });
   res.status(result.status).json(result.body);
 };

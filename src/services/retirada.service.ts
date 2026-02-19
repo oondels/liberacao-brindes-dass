@@ -23,7 +23,7 @@ export const previewRetirada = async (): Promise<ServiceResult<ErrorResponse>> =
   notImplemented();
 
 export const biparRetirada = async (
-  input: BiparVoucherInput
+  input: BiparVoucherInput & { matricula?: number }
 ): Promise<ServiceResult<BiparRetiradaResponse>> => {
   const voucherRepo = AppDataSource.getRepository(VoucherSolicitacao);
 
