@@ -11,6 +11,7 @@ import {
   CreateSolicitacaoInput,
   ListSolicitacaoQuery,
 } from "../schemas/solicitacao.schema";
+import {CustomError} from "../types/CustomError";
 
 export const postSolicitacoes = async (
   req: Request<{}, {}, CreateSolicitacaoInput>,
@@ -18,7 +19,17 @@ export const postSolicitacoes = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const result = await criarSolicitacao(req.body);
+    const user = req.user;
+
+    if (!user?.matricula) {
+      throw new CustomError("Usuário não autenticado", 401);
+    }
+
+    const payload = {
+      ...req.body,
+      usuario_criador: user ? user.matricula : undefined,
+    }
+    const result = await criarSolicitacao(payload as CreateSolicitacaoInput & { usuario_criador?: number });
     res.status(result.status).json(result.body);
     return;
   } catch (error) {
@@ -64,8 +75,13 @@ export const postSolicitacaoAprovar = async (
 ): Promise<void> => {
   try {
     const id = req.params.id as string;
-    // TODO: extrair usuario_aprovador_id da autenticação quando implementado
-    const usuario_aprovador_id = Number(req.body?.usuario_aprovador) || 1;
+    const user = req.user;
+
+    if (!user?.matricula) {
+      throw new CustomError("Usuário não autenticado", 401);
+    }
+
+    const usuario_aprovador_id = user ? Number(user.matricula) : undefined;
     const result = await aprovarSolicitacao(id, usuario_aprovador_id);
     res.status(result.status).json(result.body);
   } catch (error) {
@@ -80,7 +96,13 @@ export const postSolicitacaoRejeitar = async (
 ): Promise<void> => {
   try {
     const id = req.params.id as string;
-    const usuario_id = Number(req.body?.usuario_id) || 1;
+    const user = req.user;
+
+    if (!user?.matricula) {
+      throw new CustomError("Usuário não autenticado", 401);
+    }
+
+    const usuario_id = user ? Number(user.matricula) : undefined;
     const result = await rejeitarSolicitacao(id, usuario_id);
     res.status(result.status).json(result.body);
   } catch (error) {

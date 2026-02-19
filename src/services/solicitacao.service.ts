@@ -25,13 +25,8 @@ export type SolicitacaoResponse =
   | { data: SolicitacaoBrinde }
   | SolicitacaoListPayload;
 
-const notImplemented = (): ServiceResult<SolicitacaoResponse> => ({
-  status: 501,
-  body: { error: "not implemented" },
-});
-
 export const criarSolicitacao = async (
-  input: CreateSolicitacaoInput
+  input: CreateSolicitacaoInput & { usuario_criador?: number }
 ): Promise<ServiceResult<SolicitacaoResponse>> => {
   const toNumber = (value: string, field: string): number | null => {
     const parsed = Number(value);
@@ -57,7 +52,7 @@ export const criarSolicitacao = async (
       setor: input.setor,
       gerente: input.gerente,
       tipo_requisicao: input.tipo_requisicao as TipoRequisicao,
-      usuario_criador: matricula,
+      usuario_criador: input.usuario_criador,
       marca: input.marca,
       modelo: input.modelo,
       num_calce: numCalce,
@@ -163,7 +158,7 @@ export const obterSolicitacaoPorId = async (id: string): Promise<ServiceResult<S
 
 export const aprovarSolicitacao = async (
   id: string,
-  user_aprovador: number = 1
+  user_aprovador: number | undefined
 ): Promise<ServiceResult<SolicitacaoResponse>> => {
   const queryRunner = AppDataSource.createQueryRunner();
   await queryRunner.connect();
@@ -225,7 +220,7 @@ export const aprovarSolicitacao = async (
 
 export const rejeitarSolicitacao = async (
   id: string,
-  usuario_id: number
+  usuario_id: number | undefined
 ): Promise<ServiceResult<SolicitacaoResponse>> => {
   const queryRunner = AppDataSource.createQueryRunner();
   await queryRunner.connect();
