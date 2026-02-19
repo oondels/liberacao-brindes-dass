@@ -146,7 +146,7 @@ export const listarSolicitacoes = async (
 
 export const obterSolicitacaoPorId = async (id: string): Promise<ServiceResult<SolicitacaoResponse>> => {
   try {
-    const solicitacao = await repository.findOne({ where: { id } })
+    const solicitacao = await repository.findOne({ where: { id }, relations: ["voucher"] });
     if (!solicitacao) throw new CustomError("Solicitação não encontrada", 404)
 
     return {
@@ -160,6 +160,7 @@ export const obterSolicitacaoPorId = async (id: string): Promise<ServiceResult<S
     throw new CustomError(`Erro ao obter solicitação por id: ${id}`, 500)
   }
 }
+
 export const aprovarSolicitacao = async (
   id: string,
   user_aprovador: number = 1

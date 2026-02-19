@@ -22,12 +22,14 @@ solicitacoesRouter.post(
   postSolicitacoes
 );
 
+// Protegida para somente modelagem e gerentes e portaria
 solicitacoesRouter.get(
   "/solicitacoes",
   validateRequest("query", listSolicitacaoQuerySchema),
   getSolicitacoes
 );
 
+// Colocar rota protegida por autenticação quando implementada para somente gerente e portaria
 solicitacoesRouter.get("/solicitacoes/:id", getSolicitacaoById);
 
 solicitacoesRouter.post("/solicitacoes/:id/aprovar", postSolicitacaoAprovar);
