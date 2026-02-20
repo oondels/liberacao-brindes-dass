@@ -2,6 +2,7 @@ import { Between, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual } from "typ
 import { AppDataSource } from "../config/db";
 import { SolicitacaoBrinde } from "../models/Solicitacao";
 import { VoucherSolicitacao, StatusSVouncher } from "../models/VoucherSolicitacao";
+import { UserAprovacao } from "../models/UserAprovacao";
 import {
   CreateSolicitacaoInput,
   ListSolicitacaoQuery,
@@ -12,6 +13,29 @@ import { CustomError } from "../types/CustomError";
 import { nanoid } from "nanoid";
 
 const repository = AppDataSource.getRepository(SolicitacaoBrinde);
+
+const verificarPermissaoAprovacao = async (
+  matricula: number,
+  tipoRequisicao: string
+): Promise<void> => {
+  const userAprovacaoRepository = AppDataSource.getRepository(UserAprovacao);
+
+  const userAprovacao = await userAprovacaoRepository.findOne({
+    where: { matricula },
+  });
+
+  if (!userAprovacao) {
+    throw new CustomError("Usuário sem permissão para aprovação de solicitações", 403);
+  }
+
+  const tiposPermitidos = userAprovacao.tipo_requisicao as string[];
+  if (!tiposPermitidos.includes(tipoRequisicao)) {
+    throw new CustomError(
+      `Usuário sem permissão para aprovar solicitações do tipo '${tipoRequisicao}'`,
+      403
+    );
+  }
+};
 
 type SolicitacaoListPayload = {
   data: SolicitacaoBrinde[];
@@ -158,7 +182,7 @@ export const obterSolicitacaoPorId = async (id: string): Promise<ServiceResult<S
 
 export const aprovarSolicitacao = async (
   id: string,
-  user_aprovador: number | undefined
+  user_aprovador: number
 ): Promise<ServiceResult<SolicitacaoResponse>> => {
   const queryRunner = AppDataSource.createQueryRunner();
   await queryRunner.connect();
@@ -176,6 +200,8 @@ export const aprovarSolicitacao = async (
     if (solicitacao.status !== StatusSolicitacaoBrinde.PENDENTE_APROVACAO) {
       throw new CustomError("Solicitação não está pendente de aprovação", 400);
     }
+
+    await verificarPermissaoAprovacao(user_aprovador, solicitacao.tipo_requisicao);
 
     // Atualiza a solicitação
     solicitacao.status = StatusSolicitacaoBrinde.APROVADO;
@@ -209,7 +235,7 @@ export const aprovarSolicitacao = async (
   } catch (error) {
     await queryRunner.rollbackTransaction();
     console.log("Erro ao aprovar solicitação: ", error);
-    
+
 
     if (error instanceof CustomError) throw error;
     throw new CustomError("Erro ao aprovar solicitação", 500);
@@ -238,6 +264,12 @@ export const rejeitarSolicitacao = async (
     if (solicitacao.status !== StatusSolicitacaoBrinde.PENDENTE_APROVACAO) {
       throw new CustomError("Solicitação não está pendente de aprovação", 400);
     }
+
+    if (usuario_id === undefined) {
+      throw new CustomError("Usuário não autenticado", 401);
+    }
+
+    await verificarPermissaoAprovacao(usuario_id, solicitacao.tipo_requisicao);
 
     solicitacao.status = StatusSolicitacaoBrinde.REJEITADO;
     solicitacao.updated_by = usuario_id;

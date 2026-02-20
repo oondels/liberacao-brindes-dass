@@ -16,8 +16,8 @@ export enum TipoRequisicao {
   FALTA_ZERO = 'falta_zero' 
 }
 
-@Entity({ name: 'gerente_aprovacao', schema: 'liberacao_brinde' })
-export class GerenteAprovacao {
+@Entity({ name: 'user_aprovacao', schema: 'liberacao_brinde' })
+export class UserAprovacao {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

@@ -81,7 +81,7 @@ export const postSolicitacaoAprovar = async (
       throw new CustomError("Usuário não autenticado", 401);
     }
 
-    const usuario_aprovador_id = user ? Number(user.matricula) : undefined;
+    const usuario_aprovador_id = Number(user.matricula);
     const result = await aprovarSolicitacao(id, usuario_aprovador_id);
     res.status(result.status).json(result.body);
   } catch (error) {
