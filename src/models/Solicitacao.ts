@@ -13,7 +13,10 @@ import { VoucherSolicitacao } from './VoucherSolicitacao';
 export enum TipoRequisicao {
   TESTE_CALCE = 'teste_calce',
   PRODUCAO = 'producao',
-  SOBRA= 'sobra'
+  SOBRA = 'sobra',
+  PENS_EAJA = 'pense_aja',
+  CAMPANHA = 'campanha',
+  FALTA_ZERO = 'falta_zero' 
 }
 
 export enum StatusSolicitacaoBrinde {

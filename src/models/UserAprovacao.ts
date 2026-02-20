@@ -4,17 +4,8 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  Check,
 } from 'typeorm';
-
-export enum TipoRequisicao {
-  TESTE_CALCE = 'teste_calce',
-  PRODUCAO = 'producao',
-  SOBRA = 'sobra',
-  PENS_EAJA = 'pense_aja',
-  CAMPANHA = 'campanha',
-  FALTA_ZERO = 'falta_zero' 
-}
+import { TipoRequisicao } from './Solicitacao';
 
 @Entity({ name: 'user_aprovacao', schema: 'liberacao_brinde' })
 export class UserAprovacao {
