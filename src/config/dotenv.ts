@@ -17,7 +17,8 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
 
   RABBITMQ_URL: z.string().optional(),
-  DEV_EMAIL: z.string().default('hendriusfelix.dev@gmail.com'),
+  NOTIFICATION_API: z.string().min(1),
+  NOTIFICATION_API_KEY: z.string().min(1),
   
   REDIS_HOST: z.string().default('localhost'),
   REDIS_PORT: z.coerce.number().int().positive().default(6379),
@@ -60,6 +61,10 @@ export const config = {
     host: env.REDIS_HOST,
     port: env.REDIS_PORT,
     password: env.REDIS_PASS
+  },
+  notification: {
+    apiUrl: env.NOTIFICATION_API,
+    apiKey: env.NOTIFICATION_API_KEY
   }
 }
 
