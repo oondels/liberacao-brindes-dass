@@ -22,8 +22,8 @@ const solicitacoesRouter = Router();
 solicitacoesRouter.post(
   "/solicitacoes",
   authenticateToken,
-  createSolicitation,
   validateRequest("body", createSolicitacaoSchema),
+  createSolicitation,
   postSolicitacoes
 );
 

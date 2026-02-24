@@ -25,9 +25,14 @@ export const postSolicitacoes = async (
       throw new CustomError("Usuário não autenticado", 401);
     }
 
+    const usuarioCriador = Number(user.matricula);
+    if (Number.isNaN(usuarioCriador)) {
+      throw new CustomError("Matrícula do usuário autenticado inválida", 400);
+    }
+
     const payload = {
       ...req.body,
-      usuario_criador: user ? user.matricula : undefined,
+      usuario_criador: usuarioCriador,
     }
     const result = await criarSolicitacao(payload as CreateSolicitacaoInput & { usuario_criador?: number });
     res.status(result.status).json(result.body);
