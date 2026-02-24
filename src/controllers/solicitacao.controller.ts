@@ -8,6 +8,7 @@ import {
   rejeitarSolicitacao,
 } from "../services/solicitacao.service";
 import {
+  AprovarSolicitacaoInput,
   CreateSolicitacaoInput,
   ListSolicitacaoQuery,
 } from "../schemas/solicitacao.schema";
@@ -74,7 +75,7 @@ export const getSolicitacaoById = async (
 };
 
 export const postSolicitacaoAprovar = async (
-  req: Request,
+  req: Request<{ id: string }, {}, AprovarSolicitacaoInput>,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -87,7 +88,7 @@ export const postSolicitacaoAprovar = async (
     }
 
     const usuario_aprovador_id = Number(user.matricula);
-    const result = await aprovarSolicitacao(id, usuario_aprovador_id);
+    const result = await aprovarSolicitacao(id, usuario_aprovador_id, req.body);
     res.status(result.status).json(result.body);
   } catch (error) {
     next(error);

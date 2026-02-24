@@ -4,6 +4,7 @@ import { SolicitacaoBrinde } from "../models/Solicitacao";
 import { VoucherSolicitacao, StatusSVouncher } from "../models/VoucherSolicitacao";
 import { UserAprovacao } from "../models/UserAprovacao";
 import {
+  AprovarSolicitacaoInput,
   CreateSolicitacaoInput,
   ListSolicitacaoQuery,
 } from "../schemas/solicitacao.schema";
@@ -13,6 +14,7 @@ import { CustomError } from "../types/CustomError";
 import { nanoid } from "nanoid";
 
 const repository = AppDataSource.getRepository(SolicitacaoBrinde);
+const tiposComBrindeDefinidoNaAprovacao = [TipoRequisicao.CAMPANHA, TipoRequisicao.FALTA_ZERO];
 
 const verificarPermissaoAprovacao = async (
   matricula: number,
@@ -60,9 +62,20 @@ export const criarSolicitacao = async (
   const numCalce = toNumber(input.num_calce, "num_calce");
   const rfid = input.rfid ? toNumber(input.rfid, "rfid") : null;
   const codbarras = input.codbarras ? toNumber(input.codbarras, "codbarras") : null;
+  const tipoRequisicao = input.tipo_requisicao as TipoRequisicao;
+  const marca = input.marca?.trim();
+  const modelo = input.modelo?.trim();
 
   if (matricula === null || numCalce === null) {
     throw new CustomError("Campos numerios invalidos", 400)
+  }
+
+  const tipoPermiteBrindeVazioNaCriacao = tiposComBrindeDefinidoNaAprovacao.includes(tipoRequisicao);
+  if (!tipoPermiteBrindeVazioNaCriacao && (!marca || !modelo)) {
+    throw new CustomError(
+      "Marca e modelo são obrigatórios para este tipo de solicitação",
+      400
+    );
   }
 
   try {
@@ -75,10 +88,10 @@ export const criarSolicitacao = async (
       codbarras: codbarras ?? undefined,
       setor: input.setor,
       gerente: input.gerente,
-      tipo_requisicao: input.tipo_requisicao as TipoRequisicao,
+      tipo_requisicao: tipoRequisicao,
       usuario_criador: input.usuario_criador,
-      marca: input.marca,
-      modelo: input.modelo,
+      marca: marca || undefined,
+      modelo: modelo || undefined,
       num_calce: numCalce,
       status: StatusSolicitacaoBrinde.PENDENTE_APROVACAO,
     });
@@ -182,7 +195,8 @@ export const obterSolicitacaoPorId = async (id: string): Promise<ServiceResult<S
 
 export const aprovarSolicitacao = async (
   id: string,
-  user_aprovador: number
+  user_aprovador: number,
+  input: AprovarSolicitacaoInput
 ): Promise<ServiceResult<SolicitacaoResponse>> => {
   const queryRunner = AppDataSource.createQueryRunner();
   await queryRunner.connect();
@@ -202,6 +216,24 @@ export const aprovarSolicitacao = async (
     }
 
     await verificarPermissaoAprovacao(user_aprovador, solicitacao.tipo_requisicao);
+
+    const tipoDefineBrindeNaAprovacao = tiposComBrindeDefinidoNaAprovacao.includes(solicitacao.tipo_requisicao);
+    if (tipoDefineBrindeNaAprovacao) {
+      const marcaAprovacao = input.marca?.trim();
+      const modeloAprovacao = input.modelo?.trim();
+
+      if (!marcaAprovacao || !modeloAprovacao) {
+        throw new CustomError(
+          "Para aprovar solicitações dos tipos campanha e falta_zero, informe marca e modelo",
+          400
+        );
+      }
+
+      solicitacao.marca = marcaAprovacao;
+      solicitacao.modelo = modeloAprovacao;
+    } else if (!solicitacao.marca || !solicitacao.modelo) {
+      throw new CustomError("Solicitação sem marca/modelo para aprovação", 400);
+    }
 
     // Atualiza a solicitação
     solicitacao.status = StatusSolicitacaoBrinde.APROVADO;

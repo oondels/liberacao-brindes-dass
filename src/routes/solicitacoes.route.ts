@@ -9,6 +9,7 @@ import {
 } from "../controllers/solicitacao.controller";
 import { validateRequest } from "../middleware/validate.middleware";
 import {
+  aprovarSolicitacaoSchema,
   cancelSolicitacaoSchema,
   createSolicitacaoSchema,
   listSolicitacaoQuerySchema,
@@ -36,7 +37,13 @@ solicitacoesRouter.get(
 
 solicitacoesRouter.get("/solicitacoes/:id", authenticateToken, getSolicitacaoById);
 
-solicitacoesRouter.post("/solicitacoes/:id/aprovar", authenticateToken, isManager, postSolicitacaoAprovar);
+solicitacoesRouter.post(
+  "/solicitacoes/:id/aprovar",
+  authenticateToken,
+  isManager,
+  validateRequest("body", aprovarSolicitacaoSchema),
+  postSolicitacaoAprovar
+);
 solicitacoesRouter.post("/solicitacoes/:id/rejeitar", authenticateToken, isManager, postSolicitacaoRejeitar);
 solicitacoesRouter.post(
   "/solicitacoes/:id/cancelar",

@@ -65,11 +65,11 @@ export class SolicitacaoBrinde {
   @Column({ type: 'int8' })
   usuario_criador!: number;
 
-  @Column({ type: 'varchar', length: 40 })
-  marca!: string;
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  marca?: string;
 
-  @Column({ type: 'varchar', length: 60 })
-  modelo!: string;
+  @Column({ type: 'varchar', length: 60, nullable: true })
+  modelo?: string;
 
   @Column({ type: 'int2' })
   num_calce!: number;
