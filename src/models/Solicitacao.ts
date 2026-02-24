@@ -16,7 +16,8 @@ export enum TipoRequisicao {
   SOBRA = 'sobra',
   PENS_EAJA = 'pense_aja',
   CAMPANHA = 'campanha',
-  FALTA_ZERO = 'falta_zero' 
+  FALTA_ZERO = 'falta_zero',
+  BRIGADA_INCENDIO = 'brigada_incendio'
 }
 
 export enum StatusSolicitacaoBrinde {
