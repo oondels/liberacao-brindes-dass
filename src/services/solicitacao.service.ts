@@ -9,7 +9,7 @@ import {
   ListSolicitacaoQuery,
 } from "../schemas/solicitacao.schema";
 import { ServiceResult } from "../types/service";
-import { TipoRequisicao, StatusSolicitacaoBrinde } from "../models/Solicitacao";
+import { SubgrupoCampanha, TipoRequisicao, StatusSolicitacaoBrinde } from "../models/Solicitacao";
 import { CustomError } from "../types/CustomError";
 import { nanoid } from "nanoid";
 
@@ -63,6 +63,7 @@ export const criarSolicitacao = async (
   const rfid = input.rfid ? toNumber(input.rfid, "rfid") : null;
   const codbarras = input.codbarras ? toNumber(input.codbarras, "codbarras") : null;
   const tipoRequisicao = input.tipo_requisicao as TipoRequisicao;
+  const subgrupoCampanha = input.subgrupo_campanha as SubgrupoCampanha | undefined;
   const marca = input.marca?.trim();
   const modelo = input.modelo?.trim();
 
@@ -89,6 +90,7 @@ export const criarSolicitacao = async (
       setor: input.setor,
       gerente: input.gerente,
       tipo_requisicao: tipoRequisicao,
+      subgrupo_campanha: subgrupoCampanha || undefined,
       usuario_criador: input.usuario_criador,
       marca: marca || undefined,
       modelo: modelo || undefined,

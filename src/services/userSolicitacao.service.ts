@@ -87,7 +87,7 @@ export const atualizarUserSolicitacao = async (
     throw new CustomError("Usuário de criação de solicitação não encontrado", 404);
   }
 
-  if (existing.matricula !== input.matricula) {
+  if (String(existing.matricula) !== String(input.matricula)) {
     const matriculaEmUso = await repository.findOne({
       where: { matricula: input.matricula },
     });

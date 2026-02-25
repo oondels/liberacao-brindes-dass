@@ -2,12 +2,16 @@ import { z } from "zod";
 
 const tipoRequisicaoValues = [
   "teste_calce",
-  "producao",
-  "sobra",
+  "brinde_interno",
   "pense_aja",
   "campanha",
   "falta_zero",
+] as const;
+
+const subgrupoCampanhaValues = [
   "brigada_incendio",
+  "eficiencia",
+  "hora_extra",
 ] as const;
 
 const optionalNonEmptyTrimmedString = (message: string) =>
@@ -35,6 +39,7 @@ export const createSolicitacaoSchema = z
     setor: z.string().trim().min(1, "Setor obrigatorio"),
     gerente: z.string().trim().min(1, "Gerente obrigatorio"),
     tipo_requisicao: z.enum(tipoRequisicaoValues),
+    subgrupo_campanha: z.enum(subgrupoCampanhaValues).optional(),
     marca: optionalNonEmptyTrimmedString("Marca obrigatoria"),
     modelo: optionalNonEmptyTrimmedString("Modelo obrigatorio"),
     num_calce: numericString,
@@ -45,7 +50,22 @@ export const createSolicitacaoSchema = z
     const tipoPermiteSemBrinde = data.tipo_requisicao === "campanha" || data.tipo_requisicao === "falta_zero";
 
     if (tipoPermiteSemBrinde) {
+      if (!data.subgrupo_campanha) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Subgrupo de campanha obrigatório",
+          path: ["subgrupo_campanha"],
+        });
+      }
       return;
+    }
+
+    if (data.subgrupo_campanha) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Subgrupo de campanha permitido apenas para tipo campanha",
+        path: ["subgrupo_campanha"],
+      });
     }
 
     if (!data.marca) {

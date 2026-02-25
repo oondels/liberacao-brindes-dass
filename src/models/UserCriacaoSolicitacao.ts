@@ -48,7 +48,7 @@ export class UserCriacaoSolicitacao {
     enum: TipoRequisicao,
     enumName: "tipo_requisicao_enum",
     array: true,
-    default: [TipoRequisicao.PRODUCAO],
+    default: [TipoRequisicao.BRINDE_INTERNO],
   })
   tipo_requisicao!: TipoRequisicao[];
 

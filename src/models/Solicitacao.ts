@@ -12,12 +12,16 @@ import { VoucherSolicitacao } from './VoucherSolicitacao';
 
 export enum TipoRequisicao {
   TESTE_CALCE = 'teste_calce',
-  PRODUCAO = 'producao',
-  SOBRA = 'sobra',
+  BRINDE_INTERNO = 'brinde_interno',
   PENS_EAJA = 'pense_aja',
   CAMPANHA = 'campanha',
-  FALTA_ZERO = 'falta_zero',
-  BRIGADA_INCENDIO = 'brigada_incendio'
+  FALTA_ZERO = 'falta_zero'
+}
+
+export enum SubgrupoCampanha {
+  BRIGADA_INCENDIO = 'brigada_incendio',
+  EFICIENCIA = 'eficiencia',
+  HORA_EXTRA = 'hora_extra'
 }
 
 export enum StatusSolicitacaoBrinde {
@@ -55,9 +59,17 @@ export class SolicitacaoBrinde {
     type: 'enum',
     enum: TipoRequisicao,
     enumName: 'tipo_requisicao_enum',
-    default: TipoRequisicao.PRODUCAO
+    default: TipoRequisicao.BRINDE_INTERNO
   })
   tipo_requisicao!: TipoRequisicao;
+
+  @Column({
+    type: 'enum',
+    enum: SubgrupoCampanha,
+    enumName: 'campanha_subgrupo_enum',
+    nullable: true
+  })
+  subgrupo_campanha?: SubgrupoCampanha;
 
   @OneToOne(() => VoucherSolicitacao, (voucher) => voucher.solicitacao)
   voucher?: VoucherSolicitacao;
