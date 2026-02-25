@@ -235,10 +235,18 @@ export const getDashboardExportSolicitacoes = async (
   const rows = await solicitacaoRepository
     .createQueryBuilder("s")
     .leftJoin("s.voucher", "v")
-    .leftJoin(User, "u", "u.matricula = s.matricula")
+    .leftJoin(User, "u_colaborador", "u_colaborador.matricula = s.matricula")
+    .leftJoin(User, "u_criador", "u_criador.matricula = s.usuario_criador")
+    .leftJoin(User, "u_aprovador", "u_aprovador.matricula = s.gerente_aprovacao")
     .select("s.id", "id")
-    .addSelect("COALESCE(NULLIF(TRIM(s.nome), ''), NULLIF(TRIM(u.nome), ''))", "solicitante_nome")
-    .addSelect("s.matricula", "matricula")
+    .addSelect("NULLIF(TRIM(u_criador.nome), '')", "solicitante_nome")
+    .addSelect("s.usuario_criador", "usuario_criador_matricula")
+    .addSelect("NULLIF(TRIM(u_criador.nome), '')", "usuario_criador_nome")
+    .addSelect("COALESCE(NULLIF(TRIM(s.nome), ''), NULLIF(TRIM(u_colaborador.nome), ''))", "colaborador_nome")
+    .addSelect("s.matricula", "colaborador_matricula")
+    .addSelect("s.gerente_aprovacao", "gerente_aprovacao_matricula")
+    .addSelect("NULLIF(TRIM(u_aprovador.nome), '')", "gerente_aprovacao_nome")
+    .addSelect("s.data_aprovado", "data_aprovado")
     .addSelect("s.setor", "setor")
     .addSelect("s.gerente", "gerente")
     .addSelect("s.tipo_requisicao", "tipo_requisicao")
@@ -249,7 +257,6 @@ export const getDashboardExportSolicitacoes = async (
     .addSelect("s.entregue", "entregue")
     .addSelect("s.created_at", "created_at")
     .addSelect("s.data_entregue", "data_entregue")
-    .addSelect("v.codigo_voucher", "voucher_codigo")
     .addSelect("v.status", "voucher_status")
     .addSelect("v.ativo", "voucher_ativo")
     .where("s.created_at >= :startUtc", { startUtc })
@@ -258,7 +265,13 @@ export const getDashboardExportSolicitacoes = async (
     .getRawMany<{
       id: string;
       solicitante_nome: string | null;
-      matricula: string | number;
+      usuario_criador_matricula: string | number | null;
+      usuario_criador_nome: string | null;
+      colaborador_nome: string | null;
+      colaborador_matricula: string | number;
+      gerente_aprovacao_matricula: string | number | null;
+      gerente_aprovacao_nome: string | null;
+      data_aprovado: Date | null;
       setor: string;
       gerente: string;
       tipo_requisicao: TipoRequisicao;
@@ -269,7 +282,6 @@ export const getDashboardExportSolicitacoes = async (
       entregue: boolean | null;
       created_at: Date;
       data_entregue: Date | null;
-      voucher_codigo: string | null;
       voucher_status: StatusSVouncher | null;
       voucher_ativo: boolean | null;
     }>();
@@ -280,7 +292,17 @@ export const getDashboardExportSolicitacoes = async (
       data: rows.map((row) => ({
         id: row.id,
         solicitante_nome: row.solicitante_nome || null,
-        matricula: Number(row.matricula),
+        usuario_criador_matricula: row.usuario_criador_matricula
+          ? Number(row.usuario_criador_matricula)
+          : null,
+        usuario_criador_nome: row.usuario_criador_nome || null,
+        colaborador_nome: row.colaborador_nome || null,
+        colaborador_matricula: Number(row.colaborador_matricula),
+        gerente_aprovacao_matricula: row.gerente_aprovacao_matricula
+          ? Number(row.gerente_aprovacao_matricula)
+          : null,
+        gerente_aprovacao_nome: row.gerente_aprovacao_nome || null,
+        data_aprovado: row.data_aprovado ?? null,
         setor: row.setor,
         gerente: row.gerente,
         tipo_requisicao: row.tipo_requisicao,
@@ -291,7 +313,6 @@ export const getDashboardExportSolicitacoes = async (
         entregue: row.entregue,
         created_at: row.created_at,
         data_entregue: row.data_entregue,
-        voucher_codigo: row.voucher_codigo,
         voucher_status: row.voucher_status,
         voucher_ativo: row.voucher_ativo,
       })),

@@ -67,7 +67,13 @@ export interface DashboardRecentActivityDTO {
 export interface DashboardExportSolicitacaoItemDTO {
   id: string;
   solicitante_nome: string | null;
-  matricula: number;
+  usuario_criador_matricula: number | null;
+  usuario_criador_nome: string | null;
+  colaborador_nome: string | null;
+  colaborador_matricula: number;
+  gerente_aprovacao_matricula: number | null;
+  gerente_aprovacao_nome: string | null;
+  data_aprovado: Date | null;
   setor: string;
   gerente: string;
   tipo_requisicao: TipoRequisicao;
@@ -78,7 +84,6 @@ export interface DashboardExportSolicitacaoItemDTO {
   entregue: boolean | null;
   created_at: Date;
   data_entregue: Date | null;
-  voucher_codigo: string | null;
   voucher_status: StatusSVouncher | null;
   voucher_ativo: boolean | null;
 }
