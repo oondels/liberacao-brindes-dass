@@ -50,7 +50,7 @@ export const createSolicitacaoSchema = z
     const tipoPermiteSemBrinde = data.tipo_requisicao === "campanha" || data.tipo_requisicao === "falta_zero";
 
     if (tipoPermiteSemBrinde) {
-      if (!data.subgrupo_campanha) {
+      if (!data.subgrupo_campanha && data.tipo_requisicao !== "falta_zero") {
         ctx.addIssue({
           code: "custom",
           message: "Subgrupo de campanha obrigatório",
