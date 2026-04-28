@@ -1,7 +1,14 @@
 import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual } from "typeorm";
 import { nanoid } from "nanoid";
 import { AppDataSource } from "../config/db";
-import { SolicitacaoBrinde, StatusSolicitacaoBrinde, SubgrupoCampanha, TipoRequisicao } from "../models/Solicitacao";
+import { BrindeAtivo } from "../models/BrindeAtivo";
+import {
+  GeneroSolicitacao,
+  SolicitacaoBrinde,
+  StatusSolicitacaoBrinde,
+  SubgrupoCampanha,
+  TipoRequisicao,
+} from "../models/Solicitacao";
 import { AcaoSolicitacaoHistorico, SolicitacaoHistorico } from "../models/SolicitacaoHistorico";
 import { UserAprovacao } from "../models/UserAprovacao";
 import { UserSeparacao } from "../models/UserSeparacao";
@@ -29,6 +36,20 @@ type VoucherDTO = {
   updated_at: Date;
 };
 
+type BrindeAtivoDTO = {
+  id: string;
+  nome: string;
+  tipo_requisicao: TipoRequisicao;
+  subgrupo_campanha: SubgrupoCampanha | null;
+  marca: string | null;
+  modelo: string | null;
+  genero: GeneroSolicitacao | null;
+  num_calce: number | null;
+  ativo: boolean;
+  created_at: Date;
+  updated_at: Date;
+};
+
 type SolicitacaoHistoricoDTO = {
   id: string;
   solicitacao_id: string;
@@ -44,8 +65,9 @@ type SolicitacaoHistoricoDTO = {
   created_at: Date;
 };
 
-type SolicitacaoDetalheDTO = Omit<SolicitacaoBrinde, "voucher" | "historico"> & {
+type SolicitacaoDetalheDTO = Omit<SolicitacaoBrinde, "voucher" | "historico" | "brinde"> & {
   voucher: VoucherDTO | null;
+  brinde: BrindeAtivoDTO | null;
   historico: SolicitacaoHistoricoDTO[];
   separacao: {
     realizada: boolean;
@@ -77,6 +99,9 @@ export type SolicitacaoSeparacaoListItem = {
   setor: string;
   gerente: string;
   tipo_requisicao: TipoRequisicao;
+  subgrupo_campanha: SubgrupoCampanha | null;
+  genero: GeneroSolicitacao | null;
+  brinde_id: string | null;
   marca: string | null;
   modelo: string | null;
   num_calce: number;
@@ -89,6 +114,40 @@ export type SolicitacaoSeparacaoResponse =
   | { error: string }
   | SolicitacaoListPayload<SolicitacaoSeparacaoListItem>;
 
+type SnapshotContext = {
+  tipo_requisicao: TipoRequisicao;
+  subgrupo_campanha?: SubgrupoCampanha | null;
+  genero?: GeneroSolicitacao | null;
+  num_calce: number;
+  brinde_id?: string | null;
+  marca?: string | null;
+  modelo?: string | null;
+};
+
+type ResolveSnapshotInput = {
+  manager: EntityManager;
+  context: SnapshotContext;
+  inputBrindeId?: string;
+  inputMarca?: string;
+  inputModelo?: string;
+};
+
+type ResolvedBrindeSnapshot = {
+  brinde: BrindeAtivo | null;
+  brinde_id: string | null;
+  marca: string | null;
+  modelo: string | null;
+};
+
+const normalizeOptionalString = (value?: string | null): string | null => {
+  if (typeof value !== "string") {
+    return value ?? null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+};
+
 const toVoucherDTO = (voucher?: VoucherSolicitacao | null): VoucherDTO | null =>
   voucher
     ? {
@@ -99,6 +158,23 @@ const toVoucherDTO = (voucher?: VoucherSolicitacao | null): VoucherDTO | null =>
         data_resgate: voucher.data_resgate ?? null,
         created_at: voucher.created_at,
         updated_at: voucher.updated_at,
+      }
+    : null;
+
+const toBrindeDTO = (brinde?: BrindeAtivo | null): BrindeAtivoDTO | null =>
+  brinde
+    ? {
+        id: brinde.id,
+        nome: brinde.nome,
+        tipo_requisicao: brinde.tipo_requisicao,
+        subgrupo_campanha: brinde.subgrupo_campanha ?? null,
+        marca: brinde.marca ?? null,
+        modelo: brinde.modelo ?? null,
+        genero: brinde.genero ?? null,
+        num_calce: brinde.num_calce ?? null,
+        ativo: brinde.ativo,
+        created_at: brinde.created_at,
+        updated_at: brinde.updated_at,
       }
     : null;
 
@@ -153,7 +229,13 @@ const buildSeparacaoPayload = (historico: SolicitacaoHistoricoDTO[]) => {
   };
 };
 
-const toDetalheDTO = (solicitacao: SolicitacaoBrinde & { voucher?: VoucherSolicitacao | null; historico?: SolicitacaoHistorico[] }): SolicitacaoDetalheDTO => {
+const toDetalheDTO = (
+  solicitacao: SolicitacaoBrinde & {
+    voucher?: VoucherSolicitacao | null;
+    historico?: SolicitacaoHistorico[];
+    brinde?: BrindeAtivo | null;
+  }
+): SolicitacaoDetalheDTO => {
   const historico = (solicitacao.historico ?? [])
     .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
     .map(toHistoricoDTO);
@@ -161,6 +243,7 @@ const toDetalheDTO = (solicitacao: SolicitacaoBrinde & { voucher?: VoucherSolici
   return {
     ...solicitacao,
     voucher: toVoucherDTO(solicitacao.voucher),
+    brinde: toBrindeDTO(solicitacao.brinde),
     historico,
     separacao: buildSeparacaoPayload(historico),
   };
@@ -171,10 +254,7 @@ const verificarPermissaoAprovacao = async (
   tipoRequisicao: TipoRequisicao
 ): Promise<void> => {
   const userAprovacaoRepository = AppDataSource.getRepository(UserAprovacao);
-
-  const userAprovacao = await userAprovacaoRepository.findOne({
-    where: { matricula },
-  });
+  const userAprovacao = await userAprovacaoRepository.findOne({ where: { matricula } });
 
   if (!userAprovacao) {
     throw new CustomError("Usuário sem permissão para aprovação de solicitações", 403);
@@ -192,8 +272,8 @@ const verificarPermissaoSeparacao = async (
   matricula: number,
   tipoRequisicao: TipoRequisicao
 ): Promise<UserSeparacao> => {
-  const repository = AppDataSource.getRepository(UserSeparacao);
-  const userSeparacao = await repository.findOne({ where: { matricula } });
+  const separacaoRepository = AppDataSource.getRepository(UserSeparacao);
+  const userSeparacao = await separacaoRepository.findOne({ where: { matricula } });
 
   if (!userSeparacao) {
     throw new CustomError("Usuário sem permissão para separação de solicitações", 403);
@@ -263,10 +343,81 @@ const criarVoucherParaSolicitacao = async (
   return manager.save(VoucherSolicitacao, voucher);
 };
 
+const carregarBrindeAtivo = async (
+  manager: EntityManager,
+  brindeId: string
+): Promise<BrindeAtivo> => {
+  const brinde = await manager.findOne(BrindeAtivo, {
+    where: { id: brindeId, ativo: true },
+  });
+
+  if (!brinde) {
+    throw new CustomError("Brinde ativo não encontrado", 404);
+  }
+
+  return brinde;
+};
+
+const validarCompatibilidadeBrinde = (
+  context: SnapshotContext,
+  brinde: BrindeAtivo
+): void => {
+  if (brinde.tipo_requisicao !== context.tipo_requisicao) {
+    throw new CustomError("Brinde incompatível com o tipo de requisição", 400);
+  }
+
+  if (context.tipo_requisicao === TipoRequisicao.CAMPANHA) {
+    if (!context.subgrupo_campanha || brinde.subgrupo_campanha !== context.subgrupo_campanha) {
+      throw new CustomError("Brinde incompatível com o subgrupo da campanha", 400);
+    }
+  }
+
+  if (brinde.genero && context.genero && brinde.genero !== context.genero) {
+    throw new CustomError("Brinde incompatível com o gênero informado", 400);
+  }
+
+  if (brinde.num_calce && brinde.num_calce !== context.num_calce) {
+    throw new CustomError("Brinde incompatível com o número de calce informado", 400);
+  }
+};
+
+const resolverSnapshotBrinde = async ({
+  manager,
+  context,
+  inputBrindeId,
+  inputMarca,
+  inputModelo,
+}: ResolveSnapshotInput): Promise<ResolvedBrindeSnapshot> => {
+  const brindeId = inputBrindeId ?? context.brinde_id ?? null;
+  let brinde: BrindeAtivo | null = null;
+
+  if (brindeId) {
+    brinde = await carregarBrindeAtivo(manager, brindeId);
+    validarCompatibilidadeBrinde(context, brinde);
+  }
+
+  const marca = normalizeOptionalString(inputMarca)
+    ?? normalizeOptionalString(brinde?.marca)
+    ?? normalizeOptionalString(context.marca)
+    ?? null;
+
+  const modelo = normalizeOptionalString(inputModelo)
+    ?? normalizeOptionalString(brinde?.modelo)
+    ?? normalizeOptionalString(context.modelo)
+    ?? null;
+
+  return {
+    brinde,
+    brinde_id: brinde?.id ?? null,
+    marca,
+    modelo,
+  };
+};
+
 const carregarSolicitacaoDetalhe = async (id: string): Promise<SolicitacaoDetalheDTO> => {
   const solicitacao = await repository.findOne({
     where: { id },
-    relations: ["voucher", "historico"],
+    relations: ["voucher", "historico", "brinde"],
   });
 
   if (!solicitacao) {
@@ -289,9 +440,8 @@ export const criarSolicitacao = async (
   const rfid = input.rfid ? toNumber(input.rfid) : null;
   const codbarras = input.codbarras ? toNumber(input.codbarras) : null;
   const tipoRequisicao = input.tipo_requisicao as TipoRequisicao;
-  const subgrupoCampanha = input.subgrupo_campanha as SubgrupoCampanha | undefined;
-  const marca = input.marca?.trim();
-  const modelo = input.modelo?.trim();
+  const subgrupoCampanha = (input.subgrupo_campanha as SubgrupoCampanha | undefined) ?? null;
+  const genero = input.genero as GeneroSolicitacao;
 
   if (matricula === null || numCalce === null) {
     throw new CustomError("Campos numerios invalidos", 400);
@@ -301,13 +451,25 @@ export const criarSolicitacao = async (
     throw new CustomError("Usuário criador é obrigatório", 400);
   }
 
-  const tipoPermiteBrindeVazioNaCriacao = tiposComBrindeDefinidoNaAprovacao.includes(tipoRequisicao);
-  if (!tipoPermiteBrindeVazioNaCriacao && (!marca || !modelo)) {
-    throw new CustomError("Marca e modelo são obrigatórios para este tipo de solicitação", 400);
-  }
-
   try {
     const saved = await AppDataSource.transaction(async (manager) => {
+      const snapshot = await resolverSnapshotBrinde({
+        manager,
+        context: {
+          tipo_requisicao: tipoRequisicao,
+          subgrupo_campanha: subgrupoCampanha,
+          genero,
+          num_calce: numCalce,
+        },
+        inputBrindeId: input.brinde_id,
+        inputMarca: input.marca,
+        inputModelo: input.modelo,
+      });
+
+      if (tipoRequisicao === TipoRequisicao.TESTE_CALCE && (!snapshot.marca || !snapshot.modelo)) {
+        throw new CustomError("Marca e modelo são obrigatórios para solicitações de teste_calce", 400);
+      }
+
       const solicitacao = manager.create(SolicitacaoBrinde, {
         nome: input.nome,
         matricula,
@@ -316,10 +478,12 @@ export const criarSolicitacao = async (
         setor: input.setor,
         gerente: input.gerente,
         tipo_requisicao: tipoRequisicao,
-        subgrupo_campanha: subgrupoCampanha || undefined,
+        subgrupo_campanha: subgrupoCampanha ?? undefined,
         usuario_criador: input.usuario_criador,
-        marca: marca || undefined,
-        modelo: modelo || undefined,
+        brinde_id: snapshot.brinde_id,
+        marca: snapshot.marca ?? undefined,
+        modelo: snapshot.modelo ?? undefined,
+        genero,
         num_calce: numCalce,
         status: StatusSolicitacaoBrinde.PENDENTE_APROVACAO,
       });
@@ -332,6 +496,10 @@ export const criarSolicitacao = async (
         usuario_matricula: input.usuario_criador!,
         marca_nova: persisted.marca ?? null,
         modelo_novo: persisted.modelo ?? null,
+        metadata: {
+          brinde_id: persisted.brinde_id ?? null,
+          genero: persisted.genero ?? null,
+        },
       });
 
       return persisted;
@@ -432,7 +600,7 @@ export const listarSolicitacoesSeparacao = async (
   const take = pageSize + 1;
   const skip = (page - 1) * pageSize;
 
-  const queryBuilder = repository
+  const entities = await repository
     .createQueryBuilder("solicitacao")
     .where("solicitacao.status = :status", {
       status: StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO,
@@ -440,9 +608,9 @@ export const listarSolicitacoesSeparacao = async (
     .andWhere("solicitacao.tipo_requisicao IN (:...tiposPermitidos)", { tiposPermitidos })
     .orderBy("solicitacao.created_at", "DESC")
     .skip(skip)
-    .take(take);
+    .take(take)
+    .getMany();
 
-  const entities = await queryBuilder.getMany();
   const hasMore = entities.length > pageSize;
   const data = (hasMore ? entities.slice(0, pageSize) : entities).map((item) => ({
     id: item.id,
@@ -451,6 +619,9 @@ export const listarSolicitacoesSeparacao = async (
     setor: item.setor,
     gerente: item.gerente,
     tipo_requisicao: item.tipo_requisicao,
+    subgrupo_campanha: item.subgrupo_campanha ?? null,
+    genero: item.genero ?? null,
+    brinde_id: item.brinde_id ?? null,
     marca: item.marca ?? null,
     modelo: item.modelo ?? null,
     num_calce: item.num_calce,
@@ -502,27 +673,35 @@ export const aprovarSolicitacao = async (
 
     await verificarPermissaoAprovacao(user_aprovador, solicitacao.tipo_requisicao);
 
+    const snapshot = await resolverSnapshotBrinde({
+      manager: queryRunner.manager,
+      context: {
+        tipo_requisicao: solicitacao.tipo_requisicao,
+        subgrupo_campanha: solicitacao.subgrupo_campanha ?? null,
+        genero: solicitacao.genero ?? null,
+        num_calce: solicitacao.num_calce,
+        brinde_id: solicitacao.brinde_id ?? null,
+        marca: solicitacao.marca ?? null,
+        modelo: solicitacao.modelo ?? null,
+      },
+      inputBrindeId: input.brinde_id,
+      inputMarca: input.marca,
+      inputModelo: input.modelo,
+    });
+
     const tipoDefineBrindeNaAprovacao = tiposComBrindeDefinidoNaAprovacao.includes(solicitacao.tipo_requisicao);
-    if (tipoDefineBrindeNaAprovacao) {
-      const marcaAprovacao = input.marca?.trim();
-      const modeloAprovacao = input.modelo?.trim();
-
-      if (!marcaAprovacao || !modeloAprovacao) {
-        throw new CustomError(
-          "Para aprovar solicitações dos tipos campanha e falta_zero, informe marca e modelo",
-          400
-        );
-      }
-
-      solicitacao.marca = marcaAprovacao;
-      solicitacao.modelo = modeloAprovacao;
-    } else if (!solicitacao.marca || !solicitacao.modelo) {
-      throw new CustomError("Solicitação sem marca/modelo para aprovação", 400);
+    const precisaBrindeFinalAgora = tipoDefineBrindeNaAprovacao || solicitacao.tipo_requisicao === TipoRequisicao.TESTE_CALCE;
+    if (precisaBrindeFinalAgora && (!snapshot.marca || !snapshot.modelo)) {
+      throw new CustomError("A solicitação precisa de marca e modelo definidos para aprovação", 400);
     }
 
     const statusAnterior = solicitacao.status;
     const updateDate = new Date();
+    const brindeAnteriorId = solicitacao.brinde_id ?? null;
 
+    solicitacao.brinde_id = snapshot.brinde_id;
+    solicitacao.marca = snapshot.marca ?? undefined;
+    solicitacao.modelo = snapshot.modelo ?? undefined;
     solicitacao.gerente_aprovacao = user_aprovador;
     solicitacao.updated_by = user_aprovador;
     solicitacao.data_aprovado = updateDate;
@@ -540,6 +719,10 @@ export const aprovarSolicitacao = async (
         usuario_matricula: user_aprovador,
         marca_nova: solicitacao.marca ?? null,
         modelo_novo: solicitacao.modelo ?? null,
+        metadata: {
+          brinde_anterior_id: brindeAnteriorId,
+          brinde_novo_id: solicitacao.brinde_id ?? null,
+        },
       });
     } else {
       solicitacao.status = StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO;
@@ -552,6 +735,10 @@ export const aprovarSolicitacao = async (
         usuario_matricula: user_aprovador,
         marca_nova: solicitacao.marca ?? null,
         modelo_novo: solicitacao.modelo ?? null,
+        metadata: {
+          brinde_anterior_id: brindeAnteriorId,
+          brinde_novo_id: solicitacao.brinde_id ?? null,
+        },
       });
     }
 
@@ -594,16 +781,30 @@ export const validarSeparacao = async (
 
     const marcaAnterior = solicitacao.marca ?? null;
     const modeloAnterior = solicitacao.modelo ?? null;
-    const possuiOverride = Boolean(input.marca || input.modelo);
-    const marcaFinal = input.marca?.trim() ?? solicitacao.marca?.trim();
-    const modeloFinal = input.modelo?.trim() ?? solicitacao.modelo?.trim();
+    const brindeAnteriorId = solicitacao.brinde_id ?? null;
+    const snapshot = await resolverSnapshotBrinde({
+      manager: queryRunner.manager,
+      context: {
+        tipo_requisicao: solicitacao.tipo_requisicao,
+        subgrupo_campanha: solicitacao.subgrupo_campanha ?? null,
+        genero: solicitacao.genero ?? null,
+        num_calce: solicitacao.num_calce,
+        brinde_id: solicitacao.brinde_id ?? null,
+        marca: solicitacao.marca ?? null,
+        modelo: solicitacao.modelo ?? null,
+      },
+      inputBrindeId: input.brinde_id,
+      inputMarca: input.marca,
+      inputModelo: input.modelo,
+    });
 
-    if (!marcaFinal || !modeloFinal) {
+    if (!snapshot.marca || !snapshot.modelo) {
       throw new CustomError("Separação exige marca e modelo finais preenchidos", 400);
     }
 
-    solicitacao.marca = marcaFinal;
-    solicitacao.modelo = modeloFinal;
+    solicitacao.brinde_id = snapshot.brinde_id;
+    solicitacao.marca = snapshot.marca;
+    solicitacao.modelo = snapshot.modelo;
     solicitacao.status = StatusSolicitacaoBrinde.APROVADO;
     solicitacao.updated_by = operadorMatricula;
     solicitacao.updated_at = new Date();
@@ -620,7 +821,11 @@ export const validarSeparacao = async (
       modelo_anterior: modeloAnterior,
       marca_nova: solicitacao.marca ?? null,
       modelo_novo: solicitacao.modelo ?? null,
-      metadata: { override_aplicado: possuiOverride },
+      metadata: {
+        override_aplicado: Boolean(input.marca || input.modelo),
+        brinde_anterior_id: brindeAnteriorId,
+        brinde_novo_id: solicitacao.brinde_id ?? null,
+      },
     });
 
     await queryRunner.commitTransaction();
@@ -676,6 +881,9 @@ export const rejeitarSolicitacao = async (
       usuario_matricula: usuario_id,
       marca_nova: solicitacao.marca ?? null,
       modelo_novo: solicitacao.modelo ?? null,
+      metadata: {
+        brinde_id: solicitacao.brinde_id ?? null,
+      },
     });
 
     await queryRunner.commitTransaction();
@@ -737,7 +945,10 @@ export const cancelarSolicitacao = async (
       usuario_matricula: solicitacao.updated_by ?? solicitacao.usuario_criador,
       marca_nova: solicitacao.marca ?? null,
       modelo_novo: solicitacao.modelo ?? null,
-      metadata: { motivo },
+      metadata: {
+        motivo,
+        brinde_id: solicitacao.brinde_id ?? null,
+      },
     });
 
     await queryRunner.commitTransaction();

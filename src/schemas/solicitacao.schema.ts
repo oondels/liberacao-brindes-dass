@@ -6,6 +6,7 @@ const tipoRequisicaoValues = [
   "pense_aja",
   "campanha",
   "falta_zero",
+  "sandalia",
 ] as const;
 
 const tipoRequisicaoSeparacaoValues = [
@@ -13,13 +14,17 @@ const tipoRequisicaoSeparacaoValues = [
   "pense_aja",
   "campanha",
   "falta_zero",
+  "sandalia",
 ] as const;
 
 const subgrupoCampanhaValues = [
   "brigada_incendio",
   "eficiencia",
   "hora_extra",
+  "brinde_5s",
 ] as const;
+
+const generoValues = ["masculino", "feminino"] as const;
 
 const optionalNonEmptyTrimmedString = (message: string) =>
   z.preprocess(
@@ -47,6 +52,8 @@ export const createSolicitacaoSchema = z
     gerente: z.string().trim().min(1, "Gerente obrigatorio"),
     tipo_requisicao: z.enum(tipoRequisicaoValues),
     subgrupo_campanha: z.enum(subgrupoCampanhaValues).optional(),
+    genero: z.enum(generoValues),
+    brinde_id: z.string().uuid("Brinde inválido").optional(),
     marca: optionalNonEmptyTrimmedString("Marca obrigatoria"),
     modelo: optionalNonEmptyTrimmedString("Modelo obrigatorio"),
     num_calce: numericString,
@@ -54,20 +61,18 @@ export const createSolicitacaoSchema = z
     codbarras: numericString.optional(),
   })
   .superRefine((data, ctx) => {
-    const tipoPermiteSemBrinde = data.tipo_requisicao === "campanha" || data.tipo_requisicao === "falta_zero";
+    const isCampanha = data.tipo_requisicao === "campanha";
+    const isTesteCalce = data.tipo_requisicao === "teste_calce";
 
-    if (tipoPermiteSemBrinde) {
-      if (!data.subgrupo_campanha && data.tipo_requisicao !== "falta_zero") {
-        ctx.addIssue({
-          code: "custom",
-          message: "Subgrupo de campanha obrigatório",
-          path: ["subgrupo_campanha"],
-        });
-      }
-      return;
+    if (isCampanha && !data.subgrupo_campanha) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Subgrupo de campanha obrigatório",
+        path: ["subgrupo_campanha"],
+      });
     }
 
-    if (data.subgrupo_campanha) {
+    if (!isCampanha && data.subgrupo_campanha) {
       ctx.addIssue({
         code: "custom",
         message: "Subgrupo de campanha permitido apenas para tipo campanha",
@@ -75,7 +80,7 @@ export const createSolicitacaoSchema = z
       });
     }
 
-    if (!data.marca) {
+    if (isTesteCalce && !data.marca) {
       ctx.addIssue({
         code: "custom",
         message: "Marca obrigatoria",
@@ -83,7 +88,7 @@ export const createSolicitacaoSchema = z
       });
     }
 
-    if (!data.modelo) {
+    if (isTesteCalce && !data.modelo) {
       ctx.addIssue({
         code: "custom",
         message: "Modelo obrigatorio",
@@ -209,15 +214,27 @@ export const listSolicitacaoQuerySchema = z
 
 export type ListSolicitacaoQuery = z.infer<typeof listSolicitacaoQuerySchema>;
 
-export const aprovarSolicitacaoSchema = z.object({
-  marca: optionalNonEmptyTrimmedString("Marca deve ser informada"),
-  modelo: optionalNonEmptyTrimmedString("Modelo deve ser informado"),
-});
+export const aprovarSolicitacaoSchema = z
+  .object({
+    brinde_id: z.string().uuid("Brinde inválido").optional(),
+    marca: optionalNonEmptyTrimmedString("Marca deve ser informada"),
+    modelo: optionalNonEmptyTrimmedString("Modelo deve ser informado"),
+  })
+  .superRefine((data, ctx) => {
+    if ((data.marca && !data.modelo) || (!data.marca && data.modelo)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Informe marca e modelo juntos para definir o brinde",
+        path: data.marca ? ["modelo"] : ["marca"],
+      });
+    }
+  });
 
 export type AprovarSolicitacaoInput = z.infer<typeof aprovarSolicitacaoSchema>;
 
 export const separarSolicitacaoSchema = z
   .object({
+    brinde_id: z.string().uuid("Brinde inválido").optional(),
     marca: optionalNonEmptyTrimmedString("Marca deve ser informada"),
     modelo: optionalNonEmptyTrimmedString("Modelo deve ser informado"),
   })

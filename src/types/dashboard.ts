@@ -1,4 +1,4 @@
-import { StatusSolicitacaoBrinde, TipoRequisicao } from "../models/Solicitacao";
+import { GeneroSolicitacao, StatusSolicitacaoBrinde, SubgrupoCampanha, TipoRequisicao } from "../models/Solicitacao";
 import { StatusSVouncher } from "../models/VoucherSolicitacao";
 
 export interface DashboardSummaryDTO {
@@ -42,6 +42,8 @@ export interface DashboardRecentActivityItemDTO {
   setor: string;
   gerente: string;
   tipo_requisicao: TipoRequisicao;
+  subgrupo_campanha: SubgrupoCampanha | null;
+  genero: GeneroSolicitacao | null;
   marca: string | null;
   modelo: string | null;
   status: StatusSolicitacaoBrinde;
@@ -77,6 +79,8 @@ export interface DashboardExportSolicitacaoItemDTO {
   setor: string;
   gerente: string;
   tipo_requisicao: TipoRequisicao;
+  subgrupo_campanha: SubgrupoCampanha | null;
+  genero: GeneroSolicitacao | null;
   marca: string | null;
   modelo: string | null;
   num_calce: number;

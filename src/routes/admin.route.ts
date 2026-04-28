@@ -24,6 +24,19 @@ import {
   putUserSeparacaoSchema,
   userSeparacaoIdParamSchema,
 } from "../schemas/userSeparacao.schema";
+import {
+  brindeAtivoIdParamSchema,
+  createBrindeAtivoSchema,
+  listBrindeAtivoQuerySchema,
+  putBrindeAtivoSchema,
+} from "../schemas/brindeAtivo.schema";
+import {
+  deleteBrindeAtivo,
+  getBrindeAtivoById,
+  getBrindesAtivos,
+  postBrindeAtivo,
+  putBrindeAtivo,
+} from "../controllers/brindeAtivo.controller";
 
 const adminRouter = Router();
 
@@ -79,6 +92,42 @@ adminRouter.delete(
   authenticateToken,
   validateRequest("params", userSeparacaoIdParamSchema),
   deleteUserSeparacao
+);
+
+adminRouter.post(
+  "/brindes",
+  authenticateToken,
+  validateRequest("body", createBrindeAtivoSchema),
+  postBrindeAtivo
+);
+
+adminRouter.get(
+  "/brindes",
+  authenticateToken,
+  validateRequest("query", listBrindeAtivoQuerySchema),
+  getBrindesAtivos
+);
+
+adminRouter.get(
+  "/brindes/:id",
+  authenticateToken,
+  validateRequest("params", brindeAtivoIdParamSchema),
+  getBrindeAtivoById
+);
+
+adminRouter.put(
+  "/brindes/:id",
+  authenticateToken,
+  validateRequest("params", brindeAtivoIdParamSchema),
+  validateRequest("body", putBrindeAtivoSchema),
+  putBrindeAtivo
+);
+
+adminRouter.delete(
+  "/brindes/:id",
+  authenticateToken,
+  validateRequest("params", brindeAtivoIdParamSchema),
+  deleteBrindeAtivo
 );
 
 export default adminRouter;

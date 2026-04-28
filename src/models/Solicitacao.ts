@@ -5,25 +5,34 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Check,
-  Index,
   OneToOne,
-  OneToMany
+  OneToMany,
+  ManyToOne,
+  JoinColumn
 } from 'typeorm';
 import { VoucherSolicitacao } from './VoucherSolicitacao';
 import { SolicitacaoHistorico } from './SolicitacaoHistorico';
+import { BrindeAtivo } from './BrindeAtivo';
 
 export enum TipoRequisicao {
   TESTE_CALCE = 'teste_calce',
   BRINDE_INTERNO = 'brinde_interno',
   PENS_EAJA = 'pense_aja',
   CAMPANHA = 'campanha',
-  FALTA_ZERO = 'falta_zero'
+  FALTA_ZERO = 'falta_zero',
+  SANDALIA = 'sandalia'
 }
 
 export enum SubgrupoCampanha {
   BRIGADA_INCENDIO = 'brigada_incendio',
   EFICIENCIA = 'eficiencia',
-  HORA_EXTRA = 'hora_extra'
+  HORA_EXTRA = 'hora_extra',
+  BRINDE_5S = 'brinde_5s'
+}
+
+export enum GeneroSolicitacao {
+  MASCULINO = 'masculino',
+  FEMININO = 'feminino'
 }
 
 export enum StatusSolicitacaoBrinde {
@@ -80,6 +89,13 @@ export class SolicitacaoBrinde {
   @OneToMany(() => SolicitacaoHistorico, (historico) => historico.solicitacao)
   historico?: SolicitacaoHistorico[];
 
+  @Column({ type: 'uuid', nullable: true })
+  brinde_id?: string | null;
+
+  @ManyToOne(() => BrindeAtivo, (brinde) => brinde.solicitacoes, { nullable: true })
+  @JoinColumn({ name: 'brinde_id' })
+  brinde?: BrindeAtivo | null;
+
   @Column({ type: 'int8' })
   usuario_criador!: number;
 
@@ -88,6 +104,14 @@ export class SolicitacaoBrinde {
 
   @Column({ type: 'varchar', length: 60, nullable: true })
   modelo?: string;
+
+  @Column({
+    type: 'enum',
+    enum: GeneroSolicitacao,
+    enumName: 'genero_solicitacao_enum',
+    nullable: true,
+  })
+  genero?: GeneroSolicitacao | null;
 
   @Column({ type: 'int2' })
   num_calce!: number;

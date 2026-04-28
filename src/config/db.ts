@@ -9,6 +9,7 @@ import { NotificationEmail } from "../models/NotificationEmail";
 import { UserCriacaoSolicitacao } from "../models/UserCriacaoSolicitacao";
 import { UserSeparacao } from "../models/UserSeparacao";
 import { SolicitacaoHistorico } from "../models/SolicitacaoHistorico";
+import { BrindeAtivo } from "../models/BrindeAtivo";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -27,6 +28,7 @@ export const AppDataSource = new DataSource({
     UserCriacaoSolicitacao,
     UserSeparacao,
     SolicitacaoHistorico,
+    BrindeAtivo,
     NotificationEmail,
   ],
   subscribers: [],
