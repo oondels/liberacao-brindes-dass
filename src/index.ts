@@ -38,7 +38,7 @@ const bootstrap = async () => {
   return;
 });
 
-  app.listen(port, () => console.log(`Application is running at http://localhost:${port}`));
+  app.listen(port, () => console.log(`Gifts application is running at port ${port}`));
 }
 
 bootstrap().catch(error => {
