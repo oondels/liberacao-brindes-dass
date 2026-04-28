@@ -1,83 +1,159 @@
-# Liberação de Tênis / Brindes DASS
+# Liberação de Brindes DASS
 
-API backend em `Node.js + TypeScript + Express + TypeORM` para controle do fluxo de solicitação, aprovação, geração de voucher e retirada de brindes para colaboradores.
+API backend em `Node.js`, `TypeScript`, `Express`, `TypeORM` e `Zod` para gestão do fluxo de solicitação, aprovação, separação, voucher, retirada e catálogo de brindes da DASS.
 
-## Análise do projeto atual
+## Visão geral
 
-O projeto já possui um fluxo principal implementado e coerente para operação:
+O sistema atende três frentes principais:
 
-- cadastro de solicitação de brinde
-- controle de permissão para criar solicitação por tipo de requisição
-- aprovação ou rejeição por usuários autorizados
-- geração automática de voucher na aprovação
-- baixa da retirada via código de voucher
-- endpoints administrativos para gestão de usuários aprovadores e usuários autorizados a criar solicitações
-- endpoints de dashboard para resumo, analytics, exportação e atividade recente
+- operação de solicitações de brindes e calçados
+- gestão de permissões administrativas por tipo de requisição
+- gestão modular do catálogo de brindes ativos
 
-Arquiteturalmente, a base está organizada em camadas simples e objetivas:
+O fluxo atual suporta:
 
-- `routes`: definição das rotas HTTP
-- `controllers`: adaptação HTTP -> serviço
-- `services`: regras de negócio e acesso aos repositórios
-- `models`: entidades TypeORM
-- `middleware`: autenticação, autorização e validação
-- `schemas`: contratos `zod`
-- `migrations`: evolução do banco
+- criação de solicitação autenticada com validação por matrícula e tipo
+- aprovação ou rejeição por aprovadores autorizados
+- etapa operacional de separação antes da liberação do voucher
+- geração de voucher transacional
+- retirada por bipagem do voucher
+- histórico persistido das transições da solicitação
+- catálogo administrativo de brindes ativos com vínculo opcional por `brinde_id`
+- dashboard administrativo com resumo, analytics, exportação e atividade recente
 
-## Fluxo implementado hoje
+## Stack e arquitetura
 
-1. Usuário autenticado cria uma solicitação em `POST /api/solicitacoes`.
-2. O middleware `createSolicitation` valida se a matrícula do usuário pode abrir aquele `tipo_requisicao`.
-3. A solicitação nasce com status `pendente_aprovacao`.
-4. Um aprovador autorizado aprova ou rejeita a solicitação.
-5. Quando aprovada, a API gera um voucher único com `nanoid`.
-6. A portaria ou automação bipa o voucher em `POST /api/retiradas/bipar`.
-7. O voucher é marcado como `resgatado` e a solicitação passa para `retirado`.
+### Tecnologias
 
-## Regras de negócio observadas no código
+- `Node.js`
+- `TypeScript`
+- `Express 5`
+- `TypeORM`
+- `PostgreSQL`
+- `Zod`
+- `JWT` em cookie
 
-- Tipos de requisição suportados:
-  - `teste_calce`
-  - `brinde_interno`
-  - `pense_aja`
-  - `campanha`
-  - `falta_zero`
-- Status da solicitação:
-  - `pendente_aprovacao`
-  - `aprovado`
-  - `rejeitado`
-  - `retirado`
-  - `cancelado`
-- Tipos `campanha` e `falta_zero` podem ser criados sem `marca` e `modelo`; esses campos passam a ser obrigatórios na aprovação.
-- Para `campanha`, `subgrupo_campanha` é obrigatório.
-- Aprovação só pode ocorrer se a solicitação estiver `pendente_aprovacao`.
-- Rejeição só pode ocorrer se a solicitação estiver `pendente_aprovacao`.
-- Cancelamento só pode ocorrer quando a solicitação está `pendente_aprovacao` ou `aprovado`.
-- Ao cancelar uma solicitação aprovada, o voucher vinculado é cancelado e inativado.
-- Retirada só pode ocorrer para voucher ativo e com status `pendente`.
+### Estrutura do projeto
 
-## Perfis e autorizações
+```text
+src/
+  config/        # ambiente e DataSource
+  controllers/   # camada HTTP
+  middleware/    # autenticação, autorização e validação
+  migrations/    # evolução do banco
+  models/        # entidades TypeORM
+  routes/        # definição das rotas
+  schemas/       # contratos zod
+  services/      # regras de negócio
+  types/         # tipos auxiliares e DTOs
+```
 
-- Autenticação via JWT em cookie `token`.
-- Criação de solicitação:
-  - controlada pela tabela `liberacao_brinde.user_criacao_solicitacao`
-  - permissão é validada por matrícula e por tipo de requisição
-- Aprovação/rejeição:
-  - exige middleware `isManager`
-  - também exige cadastro na tabela `liberacao_brinde.user_aprovacao`
-  - a permissão também é filtrada por tipo de requisição
-- Retirada:
-  - permitida para usuários de setor `automacao` ou `portaria`, ou com função contendo `portaria`
+### Organização por responsabilidade
 
-## Endpoints principais
+- `routes` definem os endpoints públicos e administrativos
+- `controllers` adaptam a camada HTTP para os serviços
+- `services` concentram regras de negócio, transações e repositórios
+- `models` representam as tabelas e relações do banco
+- `middleware` aplica autenticação e autorização por papel ou matrícula
+- `schemas` garantem contratos de entrada e filtros com `zod`
+
+## Fluxo operacional atual
+
+### 1. Criação da solicitação
+
+O usuário autenticado cria a solicitação em `POST /api/solicitacoes`.
+
+Regras relevantes:
+
+- a matrícula autenticada precisa existir em `user_criacao_solicitacao`
+- o `tipo_requisicao` precisa estar no escopo de permissão do usuário
+- `genero` é obrigatório em novas solicitações
+- `num_calce` é obrigatório
+- `marca` e `modelo` são obrigatórios apenas para `teste_calce`
+- `sandalia` é um `tipo_requisicao` próprio
+- `brinde_5s` é tratado como `subgrupo_campanha` de `campanha`
+- `brinde_id` pode ser informado para vincular a solicitação ao catálogo de brindes ativos
+
+### 2. Aprovação
+
+A aprovação ocorre em `POST /api/solicitacoes/:id/aprovar`.
+
+Regras relevantes:
+
+- exige autenticação e middleware `isManager`
+- a matrícula também precisa existir em `user_aprovacao`
+- a aprovação é limitada por `tipo_requisicao`
+- `teste_calce` continua gerando voucher imediatamente
+- os demais tipos seguem para `aguardando_separacao`
+- para `campanha` e `falta_zero`, a definição do brinde pode ser concluída na aprovação
+
+### 3. Separação
+
+A separação ocorre em `POST /api/solicitacoes/:id/separar`.
+
+Regras relevantes:
+
+- exige autenticação e permissão em `user_separacao`
+- a solicitação precisa estar em `aguardando_separacao`
+- o operador pode confirmar o brinde por `brinde_id` do catálogo, por override manual de `marca/modelo`, ou usando os dados já presentes
+- ao final da separação, `marca` e `modelo` precisam estar resolvidos
+- o voucher é gerado nessa etapa para todos os tipos que não sejam `teste_calce`
+
+### 4. Retirada
+
+A retirada ocorre em `POST /api/retiradas/bipar`.
+
+Regras relevantes:
+
+- exige autenticação
+- exige permissão de portaria ou setor autorizado
+- o voucher precisa existir, estar ativo e com status `pendente`
+- ao resgatar o voucher, a solicitação passa para `retirado`
+
+## Tipos, estados e domínio
+
+### Tipos de requisição
+
+- `teste_calce`
+- `brinde_interno`
+- `pense_aja`
+- `campanha`
+- `falta_zero`
+- `sandalia`
+
+### Subgrupos de campanha
+
+- `brigada_incendio`
+- `eficiencia`
+- `hora_extra`
+- `brinde_5s`
+
+### Status da solicitação
+
+- `pendente_aprovacao`
+- `aguardando_separacao`
+- `aprovado`
+- `rejeitado`
+- `retirado`
+- `cancelado`
+
+### Status do voucher
+
+- `pendente`
+- `resgatado`
+- `cancelado`
+
+## Rotas principais
 
 ### Solicitações
 
 - `POST /api/solicitacoes`
 - `GET /api/solicitacoes`
 - `GET /api/solicitacoes/:id`
+- `GET /api/solicitacoes/separacao`
 - `POST /api/solicitacoes/:id/aprovar`
 - `POST /api/solicitacoes/:id/rejeitar`
+- `POST /api/solicitacoes/:id/separar`
 - `POST /api/solicitacoes/:id/cancelar`
 
 ### Retiradas
@@ -91,6 +167,16 @@ Arquiteturalmente, a base está organizada em camadas simples e objetivas:
 - `GET /api/admin/user-aprovacao`
 - `GET /api/admin/user-aprovacao/:id`
 - `PATCH /api/admin/user-aprovacao/:id`
+- `POST /api/admin/user-separacao`
+- `GET /api/admin/user-separacao`
+- `GET /api/admin/user-separacao/:id`
+- `PUT /api/admin/user-separacao/:id`
+- `DELETE /api/admin/user-separacao/:id`
+- `POST /api/admin/brindes`
+- `GET /api/admin/brindes`
+- `GET /api/admin/brindes/:id`
+- `PUT /api/admin/brindes/:id`
+- `DELETE /api/admin/brindes/:id`
 - `POST /api/user-solicitacao`
 - `GET /api/user-solicitacao`
 - `GET /api/user-solicitacao/:id`
@@ -104,90 +190,139 @@ Arquiteturalmente, a base está organizada em camadas simples e objetivas:
 - `GET /api/admin/dashboard/export-solicitacoes`
 - `GET /api/admin/dashboard/recent-activity`
 
-## Banco e entidades
+## Configuração do ambiente
 
-Entidades principais:
+### Pré-requisitos
 
-- `SolicitacaoBrinde`
-- `VoucherSolicitacao`
-- `UserAprovacao`
-- `UserCriacaoSolicitacao`
-- `User`
-- `NotificationEmail`
+- `Node.js` 20+ recomendado
+- `npm`
+- `PostgreSQL`
 
-Banco configurado com PostgreSQL e migrations TypeORM. O `DataSource` está em [src/config/db.ts](/home/oendel/code/dass/liberacao_tenis_dass/src/config/db.ts:1).
+### Arquivos de ambiente
 
-## Configuração de ambiente
+O projeto carrega:
 
-Variáveis exigidas:
+- `.env` quando `NODE_ENV=development`
+- `.env.production` para outros ambientes
+
+### Variáveis obrigatórias
 
 ```env
-DB_HOST=
-DB_PORT=
-DB_USER=
-DB_PASSWORD=
-DB_NAME=
-PORT=
-JWT_SECRET=
-NOTIFICATION_API=
-NOTIFICATION_API_KEY=
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=liberacao_brinde
+
+PORT=3000
+JWT_SECRET=troque_esta_chave
+
+NOTIFICATION_API=https://sua-api-notificacao
+NOTIFICATION_API_KEY=sua-chave
+
 RABBITMQ_URL=
-REDIS_HOST=
-REDIS_PORT=
+REDIS_HOST=localhost
+REDIS_PORT=6379
 REDIS_PASS=
 ```
 
 Observações:
 
-- `NOTIFICATION_API` e `NOTIFICATION_API_KEY` são obrigatórios no parse do ambiente.
-- `RABBITMQ` e `Redis` aparecem na configuração, mas não participam do fluxo principal atual.
+- `NOTIFICATION_API` e `NOTIFICATION_API_KEY` são obrigatórios no parse do ambiente, mesmo que o fluxo principal ainda não use notificações ativamente
+- `RABBITMQ` e `Redis` estão previstos na configuração, mas não são parte crítica do fluxo principal atual
 
-## Como rodar
+## Como configurar e rodar
+
+### 1. Instalar dependências
 
 ```bash
 npm install
+```
+
+### 2. Configurar o ambiente
+
+Crie o arquivo `.env` na raiz do projeto com as variáveis necessárias.
+
+### 3. Garantir que o banco exista
+
+Crie a base PostgreSQL apontada em `DB_NAME` e configure o acesso em `DB_HOST`, `DB_PORT`, `DB_USER` e `DB_PASSWORD`.
+
+### 4. Executar as migrations
+
+```bash
 npm run migration:run
+```
+
+### 5. Rodar em desenvolvimento
+
+```bash
 npm run dev
 ```
 
-Build:
+O servidor sobe em:
+
+```text
+http://localhost:3000
+```
+
+ou na porta configurada em `PORT`.
+
+### 6. Gerar build
 
 ```bash
 npm run build
 ```
 
-## Pontos fortes da base atual
+### 7. Executar em ambiente compilado
 
-- Separação de responsabilidades clara
-- Uso de `zod` para validar payloads e query params
-- Regras críticas de aprovação e retirada estão protegidas no backend
-- Aprovação com transação para atualizar solicitação e criar voucher
-- Dashboard já contempla indicadores úteis para operação
+Hoje o `script` `start` do `package.json` aponta para `dist/index.ts`. Se for executar em produção por JavaScript compilado, o alvo correto gerado pelo `tsc` é `dist/index.js`.
 
-## Lacunas e riscos atuais
+## Scripts disponíveis
 
-- `GET /api/retiradas` ainda retorna `501 not implemented`
-- O campo `motivo` do cancelamento é validado na rota, mas não é persistido
-- O script `start` em `package.json` aponta para `node dist/index.ts`; o build gera `dist/index.js`
-- Existem serviços de notificação prontos, mas ainda não integrados ao fluxo de solicitação/aprovação/retirada
-- O CORS está fixado para origens específicas em [src/index.ts](/home/oendel/code/dass/liberacao_tenis_dass/src/index.ts:1)
-- Não há suíte de testes automatizados no projeto
-
-## Estrutura resumida
-
-```text
-src/
-  config/
-  controllers/
-  middleware/
-  migrations/
-  models/
-  routes/
-  schemas/
-  services/
-  types/
+```bash
+npm run dev
+npm run build
+npm run migration:run
+npm run migration:revert
+npm run migration:generate
 ```
 
-## Documento de processo
+## Segurança e autorização
 
-O fluxo operacional e as regras de negócio consolidadas estão em [REGRA_NEGOCIO.md](/home/oendel/code/dass/liberacao_tenis_dass/REGRA_NEGOCIO.md:1).
+- autenticação via cookie `token`
+- criação de solicitação controlada por `user_criacao_solicitacao`
+- aprovação controlada por `user_aprovacao`
+- separação controlada por `user_separacao`
+- retirada controlada por cargo/setor autorizado
+- validações de payload e query centralizadas com `zod`
+
+## Banco de dados
+
+O `DataSource` principal está em [src/config/db.ts](/home/oendel/code/dass/liberacao_tenis_dass/src/config/db.ts:1).
+
+Entidades operacionais principais:
+
+- `SolicitacaoBrinde`
+- `VoucherSolicitacao`
+- `SolicitacaoHistorico`
+- `BrindeAtivo`
+- `UserAprovacao`
+- `UserCriacaoSolicitacao`
+- `UserSeparacao`
+
+Mapeamento detalhado das tabelas:
+
+- [docs/banco-de-dados.md](docs/banco-de-dados.md)
+
+## Documentação adicional
+
+- [docs/regras-negocio.md](docs/regras-negocio.md)
+- [docs/banco-de-dados.md](docs/banco-de-dados.md)
+- [docs/endpoints.md](docs/endpoints.md)
+
+## Limitações e observações atuais
+
+- `GET /api/retiradas` ainda é apenas um endpoint de preview
+- não há suíte automatizada de testes no repositório
+- o CORS está configurado estaticamente em [src/index.ts](/home/oendel/code/dass/liberacao_tenis_dass/src/index.ts:1)
+- o fluxo usa catálogo de brindes, mas não controla saldo de estoque; o cadastro representa itens ativos disponíveis, não inventário quantitativo
