@@ -3,16 +3,21 @@ import {
   aprovarSolicitacao,
   cancelarSolicitacao,
   criarSolicitacao,
+  listarSolicitacoesSeparacao,
   listarSolicitacoes,
   obterSolicitacaoPorId,
   rejeitarSolicitacao,
+  validarSeparacao,
 } from "../services/solicitacao.service";
 import {
   AprovarSolicitacaoInput,
   CreateSolicitacaoInput,
+  ListSolicitacaoSeparacaoQuery,
   ListSolicitacaoQuery,
+  SepararSolicitacaoInput,
 } from "../schemas/solicitacao.schema";
 import {CustomError} from "../types/CustomError";
+import { TipoRequisicao } from "../models/Solicitacao";
 
 export const postSolicitacoes = async (
   req: Request<{}, {}, CreateSolicitacaoInput>,
@@ -58,6 +63,34 @@ export const getSolicitacoes = async (
   return;
 };
 
+export const getSolicitacoesSeparacao = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const user = req.user;
+
+    if (!user?.matricula) {
+      throw new CustomError("Usuário não autenticado", 401);
+    }
+
+    const matricula = Number(user.matricula);
+    if (Number.isNaN(matricula)) {
+      throw new CustomError("Matrícula do usuário autenticado inválida", 400);
+    }
+
+    const result = await listarSolicitacoesSeparacao(
+      matricula,
+      (req.separationPermissions ?? []) as TipoRequisicao[],
+      req.query as unknown as ListSolicitacaoSeparacaoQuery
+    );
+    res.status(result.status).json(result.body);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getSolicitacaoById = async (
   _req: Request,
   res: Response,
@@ -89,6 +122,31 @@ export const postSolicitacaoAprovar = async (
 
     const usuario_aprovador_id = Number(user.matricula);
     const result = await aprovarSolicitacao(id, usuario_aprovador_id, req.body);
+    res.status(result.status).json(result.body);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const postSolicitacaoSeparar = async (
+  req: Request<{ id: string }, {}, SepararSolicitacaoInput>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+    const user = req.user;
+
+    if (!user?.matricula) {
+      throw new CustomError("Usuário não autenticado", 401);
+    }
+
+    const operadorMatricula = Number(user.matricula);
+    if (Number.isNaN(operadorMatricula)) {
+      throw new CustomError("Matrícula do usuário autenticado inválida", 400);
+    }
+
+    const result = await validarSeparacao(id, operadorMatricula, req.body);
     res.status(result.status).json(result.body);
   } catch (error) {
     next(error);

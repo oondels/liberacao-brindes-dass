@@ -11,6 +11,19 @@ import {
   getUserAprovacaoById,
   patchUserAprovacao,
 } from "../controllers/userAprovacao.controller";
+import {
+  deleteUserSeparacao,
+  getUserSeparacao,
+  getUserSeparacaoById,
+  postUserSeparacao,
+  putUserSeparacao,
+} from "../controllers/userSeparacao.controller";
+import {
+  createUserSeparacaoSchema,
+  listUserSeparacaoQuerySchema,
+  putUserSeparacaoSchema,
+  userSeparacaoIdParamSchema,
+} from "../schemas/userSeparacao.schema";
 
 const adminRouter = Router();
 
@@ -30,6 +43,42 @@ adminRouter.patch(
   authenticateToken,
   validateRequest("body", patchUserAprovacaoSchema),
   patchUserAprovacao
+);
+
+adminRouter.post(
+  "/user-separacao",
+  authenticateToken,
+  validateRequest("body", createUserSeparacaoSchema),
+  postUserSeparacao
+);
+
+adminRouter.get(
+  "/user-separacao",
+  authenticateToken,
+  validateRequest("query", listUserSeparacaoQuerySchema),
+  getUserSeparacao
+);
+
+adminRouter.get(
+  "/user-separacao/:id",
+  authenticateToken,
+  validateRequest("params", userSeparacaoIdParamSchema),
+  getUserSeparacaoById
+);
+
+adminRouter.put(
+  "/user-separacao/:id",
+  authenticateToken,
+  validateRequest("params", userSeparacaoIdParamSchema),
+  validateRequest("body", putUserSeparacaoSchema),
+  putUserSeparacao
+);
+
+adminRouter.delete(
+  "/user-separacao/:id",
+  authenticateToken,
+  validateRequest("params", userSeparacaoIdParamSchema),
+  deleteUserSeparacao
 );
 
 export default adminRouter;

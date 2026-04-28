@@ -8,6 +8,13 @@ const tipoRequisicaoValues = [
   "falta_zero",
 ] as const;
 
+const tipoRequisicaoSeparacaoValues = [
+  "brinde_interno",
+  "pense_aja",
+  "campanha",
+  "falta_zero",
+] as const;
+
 const subgrupoCampanhaValues = [
   "brigada_incendio",
   "eficiencia",
@@ -172,6 +179,7 @@ export const listSolicitacaoQuerySchema = z
     data_final: optionalDate.optional(),
     status: optionalEnum([
       "pendente_aprovacao",
+      "aguardando_separacao",
       "aprovado",
       "rejeitado",
       "retirado",
@@ -207,6 +215,30 @@ export const aprovarSolicitacaoSchema = z.object({
 });
 
 export type AprovarSolicitacaoInput = z.infer<typeof aprovarSolicitacaoSchema>;
+
+export const separarSolicitacaoSchema = z
+  .object({
+    marca: optionalNonEmptyTrimmedString("Marca deve ser informada"),
+    modelo: optionalNonEmptyTrimmedString("Modelo deve ser informado"),
+  })
+  .superRefine((data, ctx) => {
+    if ((data.marca && !data.modelo) || (!data.marca && data.modelo)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Informe marca e modelo juntos para sobrescrever o brinde",
+        path: data.marca ? ["modelo"] : ["marca"],
+      });
+    }
+  });
+
+export type SepararSolicitacaoInput = z.infer<typeof separarSolicitacaoSchema>;
+
+export const listSolicitacaoSeparacaoQuerySchema = z.object({
+  page: optionalPage.optional().default(1),
+  tipo_requisicao: optionalEnum([...tipoRequisicaoSeparacaoValues]),
+});
+
+export type ListSolicitacaoSeparacaoQuery = z.infer<typeof listSolicitacaoSeparacaoQuerySchema>;
 
 export const cancelSolicitacaoSchema = z.object({
   motivo: z.string().trim().min(1, "Motivo do cancelamento é obrigatório"),

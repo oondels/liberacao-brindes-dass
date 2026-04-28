@@ -6,9 +6,11 @@ import {
   UpdateDateColumn,
   Check,
   Index,
-  OneToOne
+  OneToOne,
+  OneToMany
 } from 'typeorm';
 import { VoucherSolicitacao } from './VoucherSolicitacao';
+import { SolicitacaoHistorico } from './SolicitacaoHistorico';
 
 export enum TipoRequisicao {
   TESTE_CALCE = 'teste_calce',
@@ -26,6 +28,7 @@ export enum SubgrupoCampanha {
 
 export enum StatusSolicitacaoBrinde {
   PENDENTE_APROVACAO = 'pendente_aprovacao',
+  AGUARDANDO_SEPARACAO = 'aguardando_separacao',
   APROVADO = 'aprovado',
   REJEITADO = 'rejeitado',
   RETIRADO= 'retirado',
@@ -73,6 +76,9 @@ export class SolicitacaoBrinde {
 
   @OneToOne(() => VoucherSolicitacao, (voucher) => voucher.solicitacao)
   voucher?: VoucherSolicitacao;
+
+  @OneToMany(() => SolicitacaoHistorico, (historico) => historico.solicitacao)
+  historico?: SolicitacaoHistorico[];
 
   @Column({ type: 'int8' })
   usuario_criador!: number;

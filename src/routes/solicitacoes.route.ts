@@ -1,10 +1,12 @@
 import { Router } from "express";
 import {
   getSolicitacaoById,
+  getSolicitacoesSeparacao,
   getSolicitacoes,
   postSolicitacaoAprovar,
   postSolicitacaoCancelar,
   postSolicitacaoRejeitar,
+  postSolicitacaoSeparar,
   postSolicitacoes,
 } from "../controllers/solicitacao.controller";
 import { validateRequest } from "../middleware/validate.middleware";
@@ -12,11 +14,14 @@ import {
   aprovarSolicitacaoSchema,
   cancelSolicitacaoSchema,
   createSolicitacaoSchema,
+  listSolicitacaoSeparacaoQuerySchema,
   listSolicitacaoQuerySchema,
+  separarSolicitacaoSchema,
 } from "../schemas/solicitacao.schema";
 import { authenticateToken } from "../middleware/auth.middleware";
 import { createSolicitation } from "../middleware/createSolicitation.middleware";
 import { isManager } from "../middleware/manager.middleware";
+import { canSeparate } from "../middleware/canSeparate.middleware";
 
 const solicitacoesRouter = Router();
 
@@ -29,6 +34,14 @@ solicitacoesRouter.post(
 );
 
 solicitacoesRouter.get(
+  "/solicitacoes/separacao",
+  authenticateToken,
+  canSeparate,
+  validateRequest("query", listSolicitacaoSeparacaoQuerySchema),
+  getSolicitacoesSeparacao
+);
+
+solicitacoesRouter.get(
   "/solicitacoes",
   authenticateToken,
   validateRequest("query", listSolicitacaoQuerySchema),
@@ -36,6 +49,14 @@ solicitacoesRouter.get(
 );
 
 solicitacoesRouter.get("/solicitacoes/:id", authenticateToken, getSolicitacaoById);
+
+solicitacoesRouter.post(
+  "/solicitacoes/:id/separar",
+  authenticateToken,
+  canSeparate,
+  validateRequest("body", separarSolicitacaoSchema),
+  postSolicitacaoSeparar
+);
 
 solicitacoesRouter.post(
   "/solicitacoes/:id/aprovar",

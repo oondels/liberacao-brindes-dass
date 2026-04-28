@@ -7,6 +7,8 @@ import { User} from "../models/User";
 import { UserAprovacao } from "../models/UserAprovacao";
 import { NotificationEmail } from "../models/NotificationEmail";
 import { UserCriacaoSolicitacao } from "../models/UserCriacaoSolicitacao";
+import { UserSeparacao } from "../models/UserSeparacao";
+import { SolicitacaoHistorico } from "../models/SolicitacaoHistorico";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -17,7 +19,16 @@ export const AppDataSource = new DataSource({
   database: config.database.name,
   synchronize: false,
   logging: false,
-  entities: [SolicitacaoBrinde, VoucherSolicitacao, User, UserAprovacao, UserCriacaoSolicitacao, NotificationEmail],
+  entities: [
+    SolicitacaoBrinde,
+    VoucherSolicitacao,
+    User,
+    UserAprovacao,
+    UserCriacaoSolicitacao,
+    UserSeparacao,
+    SolicitacaoHistorico,
+    NotificationEmail,
+  ],
   subscribers: [],
   migrations: [path.join(__dirname, '../migrations/*.{ts,js}')],
   migrationsTableName: "liberacao_brinde",

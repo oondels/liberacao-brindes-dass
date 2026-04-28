@@ -1,5 +1,6 @@
 import { AppDataSource } from "../config/db";
 import { SolicitacaoBrinde, StatusSolicitacaoBrinde } from "../models/Solicitacao";
+import { AcaoSolicitacaoHistorico, SolicitacaoHistorico } from "../models/SolicitacaoHistorico";
 import { StatusSVouncher, VoucherSolicitacao } from "../models/VoucherSolicitacao";
 import { BiparVoucherInput } from "../schemas/retirada.schema";
 import { ServiceResult } from "../types/service";
@@ -65,6 +66,18 @@ export const biparRetirada = async (
         status: StatusSolicitacaoBrinde.RETIRADO,
         updated_by: input.matricula,
       });
+
+      const historico = manager.create(SolicitacaoHistorico, {
+        solicitacao_id: voucher.solicitacao.id,
+        status_anterior: voucher.solicitacao.status,
+        status_novo: StatusSolicitacaoBrinde.RETIRADO,
+        acao: AcaoSolicitacaoHistorico.RETIRADA,
+        usuario_matricula: Number(input.matricula),
+        marca_nova: voucher.solicitacao.marca ?? null,
+        modelo_novo: voucher.solicitacao.modelo ?? null,
+      });
+
+      await manager.save(SolicitacaoHistorico, historico);
     });
   } catch (err) {
     console.error("Erro ao resgatar voucher:", err);

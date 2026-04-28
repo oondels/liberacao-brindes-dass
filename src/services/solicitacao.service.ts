@@ -1,24 +1,174 @@
-import { Between, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual } from "typeorm";
+import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual } from "typeorm";
+import { nanoid } from "nanoid";
 import { AppDataSource } from "../config/db";
-import { SolicitacaoBrinde } from "../models/Solicitacao";
-import { VoucherSolicitacao, StatusSVouncher } from "../models/VoucherSolicitacao";
+import { SolicitacaoBrinde, StatusSolicitacaoBrinde, SubgrupoCampanha, TipoRequisicao } from "../models/Solicitacao";
+import { AcaoSolicitacaoHistorico, SolicitacaoHistorico } from "../models/SolicitacaoHistorico";
 import { UserAprovacao } from "../models/UserAprovacao";
+import { UserSeparacao } from "../models/UserSeparacao";
+import { StatusSVouncher, VoucherSolicitacao } from "../models/VoucherSolicitacao";
 import {
   AprovarSolicitacaoInput,
   CreateSolicitacaoInput,
   ListSolicitacaoQuery,
+  ListSolicitacaoSeparacaoQuery,
+  SepararSolicitacaoInput,
 } from "../schemas/solicitacao.schema";
-import { ServiceResult } from "../types/service";
-import { SubgrupoCampanha, TipoRequisicao, StatusSolicitacaoBrinde } from "../models/Solicitacao";
 import { CustomError } from "../types/CustomError";
-import { nanoid } from "nanoid";
+import { ServiceResult } from "../types/service";
 
 const repository = AppDataSource.getRepository(SolicitacaoBrinde);
 const tiposComBrindeDefinidoNaAprovacao = [TipoRequisicao.CAMPANHA, TipoRequisicao.FALTA_ZERO];
 
+type VoucherDTO = {
+  id: string;
+  codigo_voucher: string;
+  status: StatusSVouncher;
+  ativo: boolean;
+  data_resgate: Date | null;
+  created_at: Date;
+  updated_at: Date;
+};
+
+type SolicitacaoHistoricoDTO = {
+  id: string;
+  solicitacao_id: string;
+  status_anterior: StatusSolicitacaoBrinde | null;
+  status_novo: StatusSolicitacaoBrinde;
+  acao: AcaoSolicitacaoHistorico;
+  usuario_matricula: number;
+  marca_anterior: string | null;
+  modelo_anterior: string | null;
+  marca_nova: string | null;
+  modelo_novo: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: Date;
+};
+
+type SolicitacaoDetalheDTO = Omit<SolicitacaoBrinde, "voucher" | "historico"> & {
+  voucher: VoucherDTO | null;
+  historico: SolicitacaoHistoricoDTO[];
+  separacao: {
+    realizada: boolean;
+    separado_por?: number;
+    data_separacao?: Date;
+    alteracoes?: {
+      marca?: { antes: string | null; depois: string | null };
+      modelo?: { antes: string | null; depois: string | null };
+    };
+  };
+};
+
+type SolicitacaoListPayload<T> = {
+  data: T[];
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+};
+
+export type SolicitacaoResponse =
+  | { error: string }
+  | { data: SolicitacaoBrinde | SolicitacaoDetalheDTO }
+  | SolicitacaoListPayload<SolicitacaoBrinde>;
+
+export type SolicitacaoSeparacaoListItem = {
+  id: string;
+  nome: string;
+  matricula: number;
+  setor: string;
+  gerente: string;
+  tipo_requisicao: TipoRequisicao;
+  marca: string | null;
+  modelo: string | null;
+  num_calce: number;
+  status: StatusSolicitacaoBrinde;
+  created_at: Date;
+  data_aprovado: Date | null;
+};
+
+export type SolicitacaoSeparacaoResponse =
+  | { error: string }
+  | SolicitacaoListPayload<SolicitacaoSeparacaoListItem>;
+
+const toVoucherDTO = (voucher?: VoucherSolicitacao | null): VoucherDTO | null =>
+  voucher
+    ? {
+        id: voucher.id,
+        codigo_voucher: voucher.codigo_voucher,
+        status: voucher.status,
+        ativo: voucher.ativo,
+        data_resgate: voucher.data_resgate ?? null,
+        created_at: voucher.created_at,
+        updated_at: voucher.updated_at,
+      }
+    : null;
+
+const toHistoricoDTO = (item: SolicitacaoHistorico): SolicitacaoHistoricoDTO => ({
+  id: item.id,
+  solicitacao_id: item.solicitacao_id,
+  status_anterior: item.status_anterior ?? null,
+  status_novo: item.status_novo,
+  acao: item.acao,
+  usuario_matricula: item.usuario_matricula,
+  marca_anterior: item.marca_anterior ?? null,
+  modelo_anterior: item.modelo_anterior ?? null,
+  marca_nova: item.marca_nova ?? null,
+  modelo_novo: item.modelo_novo ?? null,
+  metadata: (item.metadata as Record<string, unknown> | null | undefined) ?? null,
+  created_at: item.created_at,
+});
+
+const buildSeparacaoPayload = (historico: SolicitacaoHistoricoDTO[]) => {
+  const ultimoEvento = [...historico]
+    .reverse()
+    .find((item) => item.acao === AcaoSolicitacaoHistorico.SEPARACAO_CONFIRMADA);
+
+  if (!ultimoEvento) {
+    return { realizada: false };
+  }
+
+  const alteracoes: {
+    marca?: { antes: string | null; depois: string | null };
+    modelo?: { antes: string | null; depois: string | null };
+  } = {};
+
+  if (ultimoEvento.marca_anterior !== ultimoEvento.marca_nova) {
+    alteracoes.marca = {
+      antes: ultimoEvento.marca_anterior ?? null,
+      depois: ultimoEvento.marca_nova ?? null,
+    };
+  }
+
+  if (ultimoEvento.modelo_anterior !== ultimoEvento.modelo_novo) {
+    alteracoes.modelo = {
+      antes: ultimoEvento.modelo_anterior ?? null,
+      depois: ultimoEvento.modelo_novo ?? null,
+    };
+  }
+
+  return {
+    realizada: true,
+    separado_por: ultimoEvento.usuario_matricula,
+    data_separacao: ultimoEvento.created_at,
+    alteracoes: Object.keys(alteracoes).length > 0 ? alteracoes : undefined,
+  };
+};
+
+const toDetalheDTO = (solicitacao: SolicitacaoBrinde & { voucher?: VoucherSolicitacao | null; historico?: SolicitacaoHistorico[] }): SolicitacaoDetalheDTO => {
+  const historico = (solicitacao.historico ?? [])
+    .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
+    .map(toHistoricoDTO);
+
+  return {
+    ...solicitacao,
+    voucher: toVoucherDTO(solicitacao.voucher),
+    historico,
+    separacao: buildSeparacaoPayload(historico),
+  };
+};
+
 const verificarPermissaoAprovacao = async (
   matricula: number,
-  tipoRequisicao: string
+  tipoRequisicao: TipoRequisicao
 ): Promise<void> => {
   const userAprovacaoRepository = AppDataSource.getRepository(UserAprovacao);
 
@@ -30,8 +180,7 @@ const verificarPermissaoAprovacao = async (
     throw new CustomError("Usuário sem permissão para aprovação de solicitações", 403);
   }
 
-  const tiposPermitidos = userAprovacao.tipo_requisicao as string[];
-  if (!tiposPermitidos.includes(tipoRequisicao)) {
+  if (!userAprovacao.tipo_requisicao.includes(tipoRequisicao)) {
     throw new CustomError(
       `Usuário sem permissão para aprovar solicitações do tipo '${tipoRequisicao}'`,
       403
@@ -39,71 +188,159 @@ const verificarPermissaoAprovacao = async (
   }
 };
 
-type SolicitacaoListPayload = {
-  data: SolicitacaoBrinde[];
-  page: number;
-  pageSize: number;
-  hasMore: boolean;
+const verificarPermissaoSeparacao = async (
+  matricula: number,
+  tipoRequisicao: TipoRequisicao
+): Promise<UserSeparacao> => {
+  const repository = AppDataSource.getRepository(UserSeparacao);
+  const userSeparacao = await repository.findOne({ where: { matricula } });
+
+  if (!userSeparacao) {
+    throw new CustomError("Usuário sem permissão para separação de solicitações", 403);
+  }
+
+  if (!userSeparacao.tipo_requisicao.includes(tipoRequisicao)) {
+    throw new CustomError(
+      `Usuário sem permissão para separar solicitações do tipo '${tipoRequisicao}'`,
+      403
+    );
+  }
+
+  return userSeparacao;
 };
 
-export type SolicitacaoResponse =
-  | { error: string }
-  | { data: SolicitacaoBrinde }
-  | SolicitacaoListPayload;
+const registrarHistorico = async (
+  manager: EntityManager,
+  input: {
+    solicitacao: SolicitacaoBrinde;
+    status_anterior?: StatusSolicitacaoBrinde | null;
+    status_novo: StatusSolicitacaoBrinde;
+    acao: AcaoSolicitacaoHistorico;
+    usuario_matricula: number;
+    marca_anterior?: string | null;
+    modelo_anterior?: string | null;
+    marca_nova?: string | null;
+    modelo_novo?: string | null;
+    metadata?: Record<string, unknown>;
+  }
+): Promise<void> => {
+  const historico = manager.create(SolicitacaoHistorico, {
+    solicitacao: input.solicitacao,
+    solicitacao_id: input.solicitacao.id,
+    status_anterior: input.status_anterior ?? null,
+    status_novo: input.status_novo,
+    acao: input.acao,
+    usuario_matricula: input.usuario_matricula,
+    marca_anterior: input.marca_anterior ?? null,
+    modelo_anterior: input.modelo_anterior ?? null,
+    marca_nova: input.marca_nova ?? null,
+    modelo_novo: input.modelo_novo ?? null,
+    metadata: input.metadata ?? null,
+  });
+
+  await manager.save(SolicitacaoHistorico, historico);
+};
+
+const criarVoucherParaSolicitacao = async (
+  manager: EntityManager,
+  solicitacao: SolicitacaoBrinde
+): Promise<VoucherSolicitacao> => {
+  const existingVoucher = await manager.findOne(VoucherSolicitacao, {
+    where: { solicitacao: { id: solicitacao.id } },
+    relations: ["solicitacao"],
+  });
+
+  if (existingVoucher) {
+    return existingVoucher;
+  }
+
+  const voucher = manager.create(VoucherSolicitacao, {
+    codigo_voucher: nanoid(10),
+    ativo: true,
+    solicitacao,
+  });
+
+  return manager.save(VoucherSolicitacao, voucher);
+};
+
+const carregarSolicitacaoDetalhe = async (id: string): Promise<SolicitacaoDetalheDTO> => {
+  const solicitacao = await repository.findOne({
+    where: { id },
+    relations: ["voucher", "historico"],
+  });
+
+  if (!solicitacao) {
+    throw new CustomError("Solicitação não encontrada", 404);
+  }
+
+  return toDetalheDTO(solicitacao);
+};
 
 export const criarSolicitacao = async (
   input: CreateSolicitacaoInput & { usuario_criador?: number }
 ): Promise<ServiceResult<SolicitacaoResponse>> => {
-  const toNumber = (value: string, field: string): number | null => {
+  const toNumber = (value: string): number | null => {
     const parsed = Number(value);
     return Number.isNaN(parsed) ? null : parsed;
   };
-  const matricula = toNumber(input.matricula, "matricula");
-  const numCalce = toNumber(input.num_calce, "num_calce");
-  const rfid = input.rfid ? toNumber(input.rfid, "rfid") : null;
-  const codbarras = input.codbarras ? toNumber(input.codbarras, "codbarras") : null;
+
+  const matricula = toNumber(input.matricula);
+  const numCalce = toNumber(input.num_calce);
+  const rfid = input.rfid ? toNumber(input.rfid) : null;
+  const codbarras = input.codbarras ? toNumber(input.codbarras) : null;
   const tipoRequisicao = input.tipo_requisicao as TipoRequisicao;
   const subgrupoCampanha = input.subgrupo_campanha as SubgrupoCampanha | undefined;
   const marca = input.marca?.trim();
   const modelo = input.modelo?.trim();
 
   if (matricula === null || numCalce === null) {
-    throw new CustomError("Campos numerios invalidos", 400)
+    throw new CustomError("Campos numerios invalidos", 400);
+  }
+
+  if (!input.usuario_criador) {
+    throw new CustomError("Usuário criador é obrigatório", 400);
   }
 
   const tipoPermiteBrindeVazioNaCriacao = tiposComBrindeDefinidoNaAprovacao.includes(tipoRequisicao);
   if (!tipoPermiteBrindeVazioNaCriacao && (!marca || !modelo)) {
-    throw new CustomError(
-      "Marca e modelo são obrigatórios para este tipo de solicitação",
-      400
-    );
+    throw new CustomError("Marca e modelo são obrigatórios para este tipo de solicitação", 400);
   }
 
   try {
-    const repository = AppDataSource.getRepository(SolicitacaoBrinde);
+    const saved = await AppDataSource.transaction(async (manager) => {
+      const solicitacao = manager.create(SolicitacaoBrinde, {
+        nome: input.nome,
+        matricula,
+        rfid: rfid ?? undefined,
+        codbarras: codbarras ?? undefined,
+        setor: input.setor,
+        gerente: input.gerente,
+        tipo_requisicao: tipoRequisicao,
+        subgrupo_campanha: subgrupoCampanha || undefined,
+        usuario_criador: input.usuario_criador,
+        marca: marca || undefined,
+        modelo: modelo || undefined,
+        num_calce: numCalce,
+        status: StatusSolicitacaoBrinde.PENDENTE_APROVACAO,
+      });
 
-    const solicitacao = repository.create({
-      nome: input.nome,
-      matricula,
-      rfid: rfid ?? undefined,
-      codbarras: codbarras ?? undefined,
-      setor: input.setor,
-      gerente: input.gerente,
-      tipo_requisicao: tipoRequisicao,
-      subgrupo_campanha: subgrupoCampanha || undefined,
-      usuario_criador: input.usuario_criador,
-      marca: marca || undefined,
-      modelo: modelo || undefined,
-      num_calce: numCalce,
-      status: StatusSolicitacaoBrinde.PENDENTE_APROVACAO,
+      const persisted = await manager.save(SolicitacaoBrinde, solicitacao);
+      await registrarHistorico(manager, {
+        solicitacao: persisted,
+        status_novo: StatusSolicitacaoBrinde.PENDENTE_APROVACAO,
+        acao: AcaoSolicitacaoHistorico.CRIACAO,
+        usuario_matricula: input.usuario_criador!,
+        marca_nova: persisted.marca ?? null,
+        modelo_novo: persisted.modelo ?? null,
+      });
+
+      return persisted;
     });
 
-    const saved = await repository.save(solicitacao);
     return { status: 201, body: { data: saved } };
   } catch (error) {
     if (error instanceof CustomError) throw error;
-
-    throw new CustomError("Erro ao criar solicitação", 500)
+    throw new CustomError("Erro ao criar solicitação", 500);
   }
 };
 
@@ -166,34 +403,80 @@ export const listarSolicitacoes = async (
 
     return {
       status: 200,
-      body: {
-        data,
-        page,
-        pageSize,
-        hasMore,
-      },
+      body: { data, page, pageSize, hasMore },
     };
-  } catch (error) {
-    throw new CustomError("Erro ao listar solicitacoes", 500)
+  } catch (_error) {
+    throw new CustomError("Erro ao listar solicitacoes", 500);
   }
+};
+
+export const listarSolicitacoesSeparacao = async (
+  userMatricula: number,
+  permissoes: TipoRequisicao[],
+  filters: ListSolicitacaoSeparacaoQuery
+): Promise<ServiceResult<SolicitacaoSeparacaoResponse>> => {
+  if (permissoes.length === 0) {
+    throw new CustomError("Usuário sem permissão para separação de solicitações", 403);
+  }
+
+  if (filters.tipo_requisicao && !permissoes.includes(filters.tipo_requisicao as TipoRequisicao)) {
+    throw new CustomError("Filtro de tipo_requisicao fora das permissões do usuário", 403);
+  }
+
+  const tiposPermitidos = filters.tipo_requisicao
+    ? [filters.tipo_requisicao as TipoRequisicao]
+    : permissoes;
+
+  const pageSize = 20;
+  const page = filters.page ?? 1;
+  const take = pageSize + 1;
+  const skip = (page - 1) * pageSize;
+
+  const queryBuilder = repository
+    .createQueryBuilder("solicitacao")
+    .where("solicitacao.status = :status", {
+      status: StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO,
+    })
+    .andWhere("solicitacao.tipo_requisicao IN (:...tiposPermitidos)", { tiposPermitidos })
+    .orderBy("solicitacao.created_at", "DESC")
+    .skip(skip)
+    .take(take);
+
+  const entities = await queryBuilder.getMany();
+  const hasMore = entities.length > pageSize;
+  const data = (hasMore ? entities.slice(0, pageSize) : entities).map((item) => ({
+    id: item.id,
+    nome: item.nome,
+    matricula: item.matricula,
+    setor: item.setor,
+    gerente: item.gerente,
+    tipo_requisicao: item.tipo_requisicao,
+    marca: item.marca ?? null,
+    modelo: item.modelo ?? null,
+    num_calce: item.num_calce,
+    status: item.status,
+    created_at: item.created_at,
+    data_aprovado: item.data_aprovado ?? null,
+  }));
+
+  return {
+    status: 200,
+    body: { data, page, pageSize, hasMore },
+  };
 };
 
 export const obterSolicitacaoPorId = async (id: string): Promise<ServiceResult<SolicitacaoResponse>> => {
   try {
-    const solicitacao = await repository.findOne({ where: { id }, relations: ["voucher"] });
-    if (!solicitacao) throw new CustomError("Solicitação não encontrada", 404)
-
+    const solicitacao = await carregarSolicitacaoDetalhe(id);
     return {
-      body: {
-        data: solicitacao
-      },
-      status: 200
-    }
+      body: { data: solicitacao },
+      status: 200,
+    };
   } catch (error) {
-    if (error instanceof CustomError) throw error
-    throw new CustomError(`Erro ao obter solicitação por id: ${id}`, 500)
+    if (error instanceof CustomError) throw error;
+    throw new CustomError(`Erro ao obter solicitação por id: ${id}`, 500);
   }
-}
+};
 
 export const aprovarSolicitacao = async (
   id: string,
@@ -237,46 +520,121 @@ export const aprovarSolicitacao = async (
       throw new CustomError("Solicitação sem marca/modelo para aprovação", 400);
     }
 
-    // Atualiza a solicitação
-    solicitacao.status = StatusSolicitacaoBrinde.APROVADO;
+    const statusAnterior = solicitacao.status;
+    const updateDate = new Date();
+
     solicitacao.gerente_aprovacao = user_aprovador;
     solicitacao.updated_by = user_aprovador;
-    const updateDate = new Date();
     solicitacao.data_aprovado = updateDate;
     solicitacao.updated_at = updateDate;
-    await queryRunner.manager.save(SolicitacaoBrinde, solicitacao);
 
-    // Cria o voucher vinculado
-    const voucher = queryRunner.manager.create(VoucherSolicitacao, {
-      codigo_voucher: nanoid(10),
-      ativo: true,
-      solicitacao,
-    });
-    await queryRunner.manager.save(VoucherSolicitacao, voucher);
+    if (solicitacao.tipo_requisicao === TipoRequisicao.TESTE_CALCE) {
+      solicitacao.status = StatusSolicitacaoBrinde.APROVADO;
+      await queryRunner.manager.save(SolicitacaoBrinde, solicitacao);
+      await criarVoucherParaSolicitacao(queryRunner.manager, solicitacao);
+      await registrarHistorico(queryRunner.manager, {
+        solicitacao,
+        status_anterior: statusAnterior,
+        status_novo: solicitacao.status,
+        acao: AcaoSolicitacaoHistorico.APROVACAO,
+        usuario_matricula: user_aprovador,
+        marca_nova: solicitacao.marca ?? null,
+        modelo_novo: solicitacao.modelo ?? null,
+      });
+    } else {
+      solicitacao.status = StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO;
+      await queryRunner.manager.save(SolicitacaoBrinde, solicitacao);
+      await registrarHistorico(queryRunner.manager, {
+        solicitacao,
+        status_anterior: statusAnterior,
+        status_novo: solicitacao.status,
+        acao: AcaoSolicitacaoHistorico.ENCAMINHADA_SEPARACAO,
+        usuario_matricula: user_aprovador,
+        marca_nova: solicitacao.marca ?? null,
+        modelo_novo: solicitacao.modelo ?? null,
+      });
+    }
 
     await queryRunner.commitTransaction();
 
-    // Recarrega a solicitação com o voucher associado
-    const solicitacaoAtualizada = await repository.findOne({
-      where: { id },
-      relations: ["voucher"],
-    });
-
-    return {
-      status: 200,
-      body: { data: solicitacaoAtualizada! },
-    };
+    const solicitacaoAtualizada = await carregarSolicitacaoDetalhe(id);
+    return { status: 200, body: { data: solicitacaoAtualizada } };
   } catch (error) {
     await queryRunner.rollbackTransaction();
-    console.log("Erro ao aprovar solicitação: ", error);
-
-
     if (error instanceof CustomError) throw error;
     throw new CustomError("Erro ao aprovar solicitação", 500);
   } finally {
     await queryRunner.release();
   }
-}
+};
+
+export const validarSeparacao = async (
+  id: string,
+  operadorMatricula: number,
+  input: SepararSolicitacaoInput
+): Promise<ServiceResult<SolicitacaoResponse>> => {
+  const queryRunner = AppDataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
+  try {
+    const solicitacao = await queryRunner.manager.findOne(SolicitacaoBrinde, {
+      where: { id },
+    });
+
+    if (!solicitacao) {
+      throw new CustomError("Solicitação não encontrada", 404);
+    }
+
+    if (solicitacao.status !== StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO) {
+      throw new CustomError("Solicitação não está aguardando separação", 400);
+    }
+
+    await verificarPermissaoSeparacao(operadorMatricula, solicitacao.tipo_requisicao);
+
+    const marcaAnterior = solicitacao.marca ?? null;
+    const modeloAnterior = solicitacao.modelo ?? null;
+    const possuiOverride = Boolean(input.marca || input.modelo);
+    const marcaFinal = input.marca?.trim() ?? solicitacao.marca?.trim();
+    const modeloFinal = input.modelo?.trim() ?? solicitacao.modelo?.trim();
+
+    if (!marcaFinal || !modeloFinal) {
+      throw new CustomError("Separação exige marca e modelo finais preenchidos", 400);
+    }
+
+    solicitacao.marca = marcaFinal;
+    solicitacao.modelo = modeloFinal;
+    solicitacao.status = StatusSolicitacaoBrinde.APROVADO;
+    solicitacao.updated_by = operadorMatricula;
+    solicitacao.updated_at = new Date();
+
+    await queryRunner.manager.save(SolicitacaoBrinde, solicitacao);
+    await criarVoucherParaSolicitacao(queryRunner.manager, solicitacao);
+    await registrarHistorico(queryRunner.manager, {
+      solicitacao,
+      status_anterior: StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO,
+      status_novo: solicitacao.status,
+      acao: AcaoSolicitacaoHistorico.SEPARACAO_CONFIRMADA,
+      usuario_matricula: operadorMatricula,
+      marca_anterior: marcaAnterior,
+      modelo_anterior: modeloAnterior,
+      marca_nova: solicitacao.marca ?? null,
+      modelo_novo: solicitacao.modelo ?? null,
+      metadata: { override_aplicado: possuiOverride },
+    });
+
+    await queryRunner.commitTransaction();
+
+    const solicitacaoAtualizada = await carregarSolicitacaoDetalhe(id);
+    return { status: 200, body: { data: solicitacaoAtualizada } };
+  } catch (error) {
+    await queryRunner.rollbackTransaction();
+    if (error instanceof CustomError) throw error;
+    throw new CustomError("Erro ao confirmar separação", 500);
+  } finally {
+    await queryRunner.release();
+  }
+};
 
 export const rejeitarSolicitacao = async (
   id: string,
@@ -305,20 +663,25 @@ export const rejeitarSolicitacao = async (
 
     await verificarPermissaoAprovacao(usuario_id, solicitacao.tipo_requisicao);
 
+    const statusAnterior = solicitacao.status;
     solicitacao.status = StatusSolicitacaoBrinde.REJEITADO;
     solicitacao.updated_by = usuario_id;
     solicitacao.updated_at = new Date();
     await queryRunner.manager.save(SolicitacaoBrinde, solicitacao);
+    await registrarHistorico(queryRunner.manager, {
+      solicitacao,
+      status_anterior: statusAnterior,
+      status_novo: solicitacao.status,
+      acao: AcaoSolicitacaoHistorico.REJEICAO,
+      usuario_matricula: usuario_id,
+      marca_nova: solicitacao.marca ?? null,
+      modelo_novo: solicitacao.modelo ?? null,
+    });
 
     await queryRunner.commitTransaction();
-
-    return {
-      status: 200,
-      body: { data: solicitacao },
-    };
+    return { status: 200, body: { data: solicitacao } };
   } catch (error) {
     await queryRunner.rollbackTransaction();
-
     if (error instanceof CustomError) throw error;
     throw new CustomError("Erro ao rejeitar solicitação", 500);
   } finally {
@@ -346,37 +709,41 @@ export const cancelarSolicitacao = async (
 
     const statusPermitidos = [
       StatusSolicitacaoBrinde.PENDENTE_APROVACAO,
+      StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO,
       StatusSolicitacaoBrinde.APROVADO,
     ];
 
     if (!statusPermitidos.includes(solicitacao.status)) {
-      throw new CustomError(
-        "Solicitação não pode ser cancelada no status atual",
-        400
-      );
+      throw new CustomError("Solicitação não pode ser cancelada no status atual", 400);
     }
 
-    // Atualiza a solicitação
+    const statusAnterior = solicitacao.status;
     solicitacao.status = StatusSolicitacaoBrinde.CANCELADO;
+    solicitacao.updated_by = solicitacao.updated_by ?? solicitacao.usuario_criador;
     solicitacao.updated_at = new Date();
     await queryRunner.manager.save(SolicitacaoBrinde, solicitacao);
 
-    // Se houver voucher vinculado, cancela-o também
     if (solicitacao.voucher) {
       solicitacao.voucher.ativo = false;
       solicitacao.voucher.status = StatusSVouncher.CANCELADO;
       await queryRunner.manager.save(VoucherSolicitacao, solicitacao.voucher);
     }
 
-    await queryRunner.commitTransaction();
+    await registrarHistorico(queryRunner.manager, {
+      solicitacao,
+      status_anterior: statusAnterior,
+      status_novo: solicitacao.status,
+      acao: AcaoSolicitacaoHistorico.CANCELAMENTO,
+      usuario_matricula: solicitacao.updated_by ?? solicitacao.usuario_criador,
+      marca_nova: solicitacao.marca ?? null,
+      modelo_novo: solicitacao.modelo ?? null,
+      metadata: { motivo },
+    });
 
-    return {
-      status: 200,
-      body: { data: solicitacao },
-    };
+    await queryRunner.commitTransaction();
+    return { status: 200, body: { data: solicitacao } };
   } catch (error) {
     await queryRunner.rollbackTransaction();
-
     if (error instanceof CustomError) throw error;
     throw new CustomError("Erro ao cancelar solicitação", 500);
   } finally {
