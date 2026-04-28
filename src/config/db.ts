@@ -10,6 +10,7 @@ import { UserCriacaoSolicitacao } from "../models/UserCriacaoSolicitacao";
 import { UserSeparacao } from "../models/UserSeparacao";
 import { SolicitacaoHistorico } from "../models/SolicitacaoHistorico";
 import { BrindeAtivo } from "../models/BrindeAtivo";
+import { UserBipagem } from "../models/UserBipagem";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -27,6 +28,7 @@ export const AppDataSource = new DataSource({
     UserAprovacao,
     UserCriacaoSolicitacao,
     UserSeparacao,
+    UserBipagem,
     SolicitacaoHistorico,
     BrindeAtivo,
     NotificationEmail,

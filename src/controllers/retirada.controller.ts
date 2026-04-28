@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { biparRetirada, previewRetirada } from "../services/retirada.service";
+import { TipoRequisicao } from "../models/Solicitacao";
 import { BiparVoucherInput } from "../schemas/retirada.schema";
 
 export const getRetiradaPreview = async (
@@ -21,7 +22,8 @@ export const postRetiradaBipar = async (
   const inputData = {
     codigo_voucher: body.codigo_voucher,
     matricula: user ? user.matricula : undefined,
+    tipos_permitidos: req.bipagemPermissions,
   }
-  const result = await biparRetirada(inputData as BiparVoucherInput & { matricula?: number });
+  const result = await biparRetirada(inputData as BiparVoucherInput & { matricula?: number; tipos_permitidos?: TipoRequisicao[] });
   res.status(result.status).json(result.body);
 };

@@ -1,5 +1,5 @@
 import { AppDataSource } from "../config/db";
-import { SolicitacaoBrinde, StatusSolicitacaoBrinde } from "../models/Solicitacao";
+import { SolicitacaoBrinde, StatusSolicitacaoBrinde, TipoRequisicao } from "../models/Solicitacao";
 import { AcaoSolicitacaoHistorico, SolicitacaoHistorico } from "../models/SolicitacaoHistorico";
 import { StatusSVouncher, VoucherSolicitacao } from "../models/VoucherSolicitacao";
 import { BiparVoucherInput } from "../schemas/retirada.schema";
@@ -24,7 +24,7 @@ export const previewRetirada = async (): Promise<ServiceResult<ErrorResponse>> =
   notImplemented();
 
 export const biparRetirada = async (
-  input: BiparVoucherInput & { matricula?: number }
+  input: BiparVoucherInput & { matricula?: number; tipos_permitidos?: TipoRequisicao[] }
 ): Promise<ServiceResult<BiparRetiradaResponse>> => {
   const voucherRepo = AppDataSource.getRepository(VoucherSolicitacao);
 
@@ -39,6 +39,17 @@ export const biparRetirada = async (
 
   if (!voucher.solicitacao) {
     return { status: 409, body: { error: "Voucher sem solicitação vinculada" } };
+  }
+
+  if (!input.tipos_permitidos || input.tipos_permitidos.length === 0) {
+    return { status: 403, body: { error: "Usuário sem permissão para bipagem de retiradas" } };
+  }
+
+  if (!input.tipos_permitidos.includes(voucher.solicitacao.tipo_requisicao)) {
+    return {
+      status: 403,
+      body: { error: `Usuário sem permissão para bipar retiradas do tipo '${voucher.solicitacao.tipo_requisicao}'` },
+    };
   }
 
   if (!voucher.ativo) {

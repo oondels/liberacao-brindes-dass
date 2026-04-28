@@ -6,6 +6,7 @@ declare global {
     interface Request {
       user?: DecodedToken;
       separationPermissions?: TipoRequisicao[];
+      bipagemPermissions?: TipoRequisicao[];
     }
   }
 }

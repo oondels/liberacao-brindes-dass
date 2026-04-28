@@ -37,6 +37,19 @@ import {
   postBrindeAtivo,
   putBrindeAtivo,
 } from "../controllers/brindeAtivo.controller";
+import {
+  deleteUserBipagem,
+  getUserBipagem,
+  getUserBipagemById,
+  postUserBipagem,
+  putUserBipagem,
+} from "../controllers/userBipagem.controller";
+import {
+  createUserBipagemSchema,
+  listUserBipagemQuerySchema,
+  putUserBipagemSchema,
+  userBipagemIdParamSchema,
+} from "../schemas/userBipagem.schema";
 
 const adminRouter = Router();
 
@@ -92,6 +105,42 @@ adminRouter.delete(
   authenticateToken,
   validateRequest("params", userSeparacaoIdParamSchema),
   deleteUserSeparacao
+);
+
+adminRouter.post(
+  "/user-bipagem",
+  authenticateToken,
+  validateRequest("body", createUserBipagemSchema),
+  postUserBipagem
+);
+
+adminRouter.get(
+  "/user-bipagem",
+  authenticateToken,
+  validateRequest("query", listUserBipagemQuerySchema),
+  getUserBipagem
+);
+
+adminRouter.get(
+  "/user-bipagem/:id",
+  authenticateToken,
+  validateRequest("params", userBipagemIdParamSchema),
+  getUserBipagemById
+);
+
+adminRouter.put(
+  "/user-bipagem/:id",
+  authenticateToken,
+  validateRequest("params", userBipagemIdParamSchema),
+  validateRequest("body", putUserBipagemSchema),
+  putUserBipagem
+);
+
+adminRouter.delete(
+  "/user-bipagem/:id",
+  authenticateToken,
+  validateRequest("params", userBipagemIdParamSchema),
+  deleteUserBipagem
 );
 
 adminRouter.post(
