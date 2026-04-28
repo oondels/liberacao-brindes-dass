@@ -185,6 +185,7 @@ export const listSolicitacaoQuerySchema = z
     status: optionalEnum([
       "pendente_aprovacao",
       "aguardando_separacao",
+      "aguardando_troca",
       "aprovado",
       "rejeitado",
       "retirado",

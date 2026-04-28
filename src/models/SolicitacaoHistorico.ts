@@ -12,6 +12,8 @@ import { SolicitacaoBrinde, StatusSolicitacaoBrinde } from "./Solicitacao";
 export enum AcaoSolicitacaoHistorico {
   CRIACAO = "criacao",
   APROVACAO = "aprovacao",
+  SOLICITACAO_TROCA = "solicitacao_troca",
+  APROVACAO_TROCA = "aprovacao_troca",
   REJEICAO = "rejeicao",
   ENCAMINHADA_SEPARACAO = "encaminhada_separacao",
   SEPARACAO_CONFIRMADA = "separacao_confirmada",

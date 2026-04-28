@@ -1,10 +1,12 @@
 import { NextFunction, Request, Response } from "express";
 import {
   aprovarSolicitacao,
+  aprovarTrocaSolicitacao,
   cancelarSolicitacao,
   criarSolicitacao,
   listarSolicitacoesSeparacao,
   listarSolicitacoes,
+  listarSolicitacoesTroca,
   obterSolicitacaoPorId,
   rejeitarSolicitacao,
   validarSeparacao,
@@ -51,14 +53,19 @@ export const postSolicitacoes = async (
 
 export const getSolicitacoes = async (
   req: Request,
-  res: Response
+  res: Response,
+  next: NextFunction
 ): Promise<void> => {
   try {
-    const result = await listarSolicitacoes(req.query as unknown as ListSolicitacaoQuery);
+    const matricula = req.user?.matricula !== undefined ? Number(req.user.matricula) : undefined;
+    const result = await listarSolicitacoes(
+      req.query as unknown as ListSolicitacaoQuery,
+      Number.isNaN(matricula) ? undefined : matricula
+    );
     res.status(result.status).json(result.body);
   } catch (error) {
     console.error("Erro ao listar solicitações: ", error);
-    res.status(500).json({ error: "Erro interno do servidor" });
+    next(error);
   }
   return;
 };
@@ -83,6 +90,33 @@ export const getSolicitacoesSeparacao = async (
     const result = await listarSolicitacoesSeparacao(
       matricula,
       (req.separationPermissions ?? []) as TipoRequisicao[],
+      req.query as unknown as ListSolicitacaoSeparacaoQuery
+    );
+    res.status(result.status).json(result.body);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSolicitacoesTroca = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const user = req.user;
+
+    if (!user?.matricula) {
+      throw new CustomError("Usuário não autenticado", 401);
+    }
+
+    const matricula = Number(user.matricula);
+    if (Number.isNaN(matricula)) {
+      throw new CustomError("Matrícula do usuário autenticado inválida", 400);
+    }
+
+    const result = await listarSolicitacoesTroca(
+      matricula,
       req.query as unknown as ListSolicitacaoSeparacaoQuery
     );
     res.status(result.status).json(result.body);
@@ -147,6 +181,31 @@ export const postSolicitacaoSeparar = async (
     }
 
     const result = await validarSeparacao(id, operadorMatricula, req.body);
+    res.status(result.status).json(result.body);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const postSolicitacaoAprovarTroca = async (
+  req: Request<{ id: string }>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+    const user = req.user;
+
+    if (!user?.matricula) {
+      throw new CustomError("Usuário não autenticado", 401);
+    }
+
+    const usuario_aprovador_id = Number(user.matricula);
+    if (Number.isNaN(usuario_aprovador_id)) {
+      throw new CustomError("Matrícula do usuário autenticado inválida", 400);
+    }
+
+    const result = await aprovarTrocaSolicitacao(id, usuario_aprovador_id);
     res.status(result.status).json(result.body);
   } catch (error) {
     next(error);

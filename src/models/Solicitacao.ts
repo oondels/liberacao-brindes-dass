@@ -38,6 +38,7 @@ export enum GeneroSolicitacao {
 export enum StatusSolicitacaoBrinde {
   PENDENTE_APROVACAO = 'pendente_aprovacao',
   AGUARDANDO_SEPARACAO = 'aguardando_separacao',
+  AGUARDANDO_TROCA = 'aguardando_troca',
   APROVADO = 'aprovado',
   REJEITADO = 'rejeitado',
   RETIRADO= 'retirado',

@@ -102,6 +102,7 @@ Relacionamentos:
 Observações:
 
 - persiste eventos de criação, aprovação, rejeição, separação, cancelamento e retirada
+- também registra solicitação de troca e aprovação de troca
 - `metadata` pode registrar `brinde_id`, motivo e outros dados auxiliares
 
 ### `brindes_ativos`
@@ -146,6 +147,7 @@ Campos relevantes:
 - `rfid`
 - `codbarras`
 - `tipo_requisicao[]`
+- `pode_aprovar_troca`
 - `updated_by`
 - `created_at`
 - `updated_at`
@@ -153,6 +155,8 @@ Campos relevantes:
 Observações:
 
 - controla o escopo de aprovação por tipo de requisição
+- `tipo_requisicao` pode ficar nulo para aprovadores globais de troca
+- `pode_aprovar_troca` habilita a fila e a aprovação de solicitações em `aguardando_troca`
 
 ### `user_criacao_solicitacao`
 
@@ -196,6 +200,28 @@ Observações:
 
 - não deve receber `teste_calce` como permissão
 - suporta `sandalia` e demais tipos que passam pela separação
+
+### `user_bipagem`
+
+Permissões operacionais para retirada e abertura de troca.
+
+Campos relevantes:
+
+- `id`
+- `nome`
+- `matricula`
+- `rfid`
+- `codbarras`
+- `tipo_requisicao[]`
+- `created_by`
+- `updated_by`
+- `created_at`
+- `updated_at`
+
+Observações:
+
+- controla quem pode bipar vouchers e solicitar troca
+- quando `tipo_requisicao` não é informado no cadastro, o usuário recebe permissão para todos os tipos
 
 ### `notification_email`
 

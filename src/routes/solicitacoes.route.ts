@@ -2,8 +2,10 @@ import { Router } from "express";
 import {
   getSolicitacaoById,
   getSolicitacoesSeparacao,
+  getSolicitacoesTroca,
   getSolicitacoes,
   postSolicitacaoAprovar,
+  postSolicitacaoAprovarTroca,
   postSolicitacaoCancelar,
   postSolicitacaoRejeitar,
   postSolicitacaoSeparar,
@@ -22,6 +24,7 @@ import { authenticateToken } from "../middleware/auth.middleware";
 import { createSolicitation } from "../middleware/createSolicitation.middleware";
 import { isManager } from "../middleware/manager.middleware";
 import { canSeparate } from "../middleware/canSeparate.middleware";
+import { canApproveTroca } from "../middleware/canApproveTroca.middleware";
 
 const solicitacoesRouter = Router();
 
@@ -39,6 +42,14 @@ solicitacoesRouter.get(
   canSeparate,
   validateRequest("query", listSolicitacaoSeparacaoQuerySchema),
   getSolicitacoesSeparacao
+);
+
+solicitacoesRouter.get(
+  "/solicitacoes/trocas",
+  authenticateToken,
+  canApproveTroca,
+  validateRequest("query", listSolicitacaoSeparacaoQuerySchema),
+  getSolicitacoesTroca
 );
 
 solicitacoesRouter.get(
@@ -64,6 +75,14 @@ solicitacoesRouter.post(
   isManager,
   validateRequest("body", aprovarSolicitacaoSchema),
   postSolicitacaoAprovar
+);
+
+solicitacoesRouter.post(
+  "/solicitacoes/:id/aprovar-troca",
+  authenticateToken,
+  isManager,
+  canApproveTroca,
+  postSolicitacaoAprovarTroca
 );
 solicitacoesRouter.post("/solicitacoes/:id/rejeitar", authenticateToken, isManager, postSolicitacaoRejeitar);
 solicitacoesRouter.post(

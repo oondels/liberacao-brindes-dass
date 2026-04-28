@@ -8,7 +8,10 @@ export const createUserAprovacaoSchema = z.object({
   codbarras: z.number().int("Código de barras deve ser um inteiro").optional(),
   tipo_requisicao: z
     .array(z.nativeEnum(TipoRequisicao))
-    .min(1, "Ao menos um tipo de requisição é obrigatório"),
+    .min(1, "Ao menos um tipo de requisição é obrigatório")
+    .nullable()
+    .optional(),
+  pode_aprovar_troca: z.boolean().optional(),
 });
 
 export type CreateUserAprovacaoInput = z.infer<typeof createUserAprovacaoSchema>;

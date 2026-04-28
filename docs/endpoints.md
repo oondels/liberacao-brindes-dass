@@ -50,9 +50,17 @@ Retorna detalhe da solicitação com:
 
 Lista a fila operacional de separação para usuários autorizados.
 
+### `GET /api/solicitacoes/trocas`
+
+Lista a fila de solicitações em `aguardando_troca` para aprovadores com `pode_aprovar_troca = true`.
+
 ### `POST /api/solicitacoes/:id/aprovar`
 
 Aprova a solicitação.
+
+### `POST /api/solicitacoes/:id/aprovar-troca`
+
+Reativa o voucher original e recoloca a solicitação no fluxo após aprovação da troca.
 
 ### `POST /api/solicitacoes/:id/rejeitar`
 
@@ -76,6 +84,10 @@ Endpoint de preview.
 
 Realiza a retirada por `codigo_voucher`.
 
+### `POST /api/retiradas/solicitar-troca`
+
+Recebe um `codigo_voucher` já resgatado e move a solicitação para `aguardando_troca`.
+
 ## Administração
 
 ### Aprovadores
@@ -85,6 +97,11 @@ Realiza a retirada por `codigo_voucher`.
 - `GET /api/admin/user-aprovacao/:id`
 - `PATCH /api/admin/user-aprovacao/:id`
 
+Observações:
+
+- suporta `pode_aprovar_troca`
+- `tipo_requisicao` pode ser nulo para aprovadores globais de troca
+
 ### Operadores de separação
 
 - `POST /api/admin/user-separacao`
@@ -92,6 +109,14 @@ Realiza a retirada por `codigo_voucher`.
 - `GET /api/admin/user-separacao/:id`
 - `PUT /api/admin/user-separacao/:id`
 - `DELETE /api/admin/user-separacao/:id`
+
+### Operadores de bipagem
+
+- `POST /api/admin/user-bipagem`
+- `GET /api/admin/user-bipagem`
+- `GET /api/admin/user-bipagem/:id`
+- `PUT /api/admin/user-bipagem/:id`
+- `DELETE /api/admin/user-bipagem/:id`
 
 ### Catálogo de brindes
 

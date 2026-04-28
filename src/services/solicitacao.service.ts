@@ -1,4 +1,4 @@
-import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual } from "typeorm";
+import { Brackets, EntityManager } from "typeorm";
 import { nanoid } from "nanoid";
 import { AppDataSource } from "../config/db";
 import { BrindeAtivo } from "../models/BrindeAtivo";
@@ -260,12 +260,43 @@ const verificarPermissaoAprovacao = async (
     throw new CustomError("Usuário sem permissão para aprovação de solicitações", 403);
   }
 
-  if (!userAprovacao.tipo_requisicao.includes(tipoRequisicao)) {
+  if (!userAprovacao.tipo_requisicao || !userAprovacao.tipo_requisicao.includes(tipoRequisicao)) {
     throw new CustomError(
       `Usuário sem permissão para aprovar solicitações do tipo '${tipoRequisicao}'`,
       403
     );
   }
+};
+
+const obterAprovadorTroca = async (matricula: number): Promise<UserAprovacao> => {
+  const userAprovacaoRepository = AppDataSource.getRepository(UserAprovacao);
+  const userAprovacao = await userAprovacaoRepository.findOne({ where: { matricula } });
+
+  if (!userAprovacao || !userAprovacao.pode_aprovar_troca) {
+    throw new CustomError("Usuário sem permissão para aprovação de trocas", 403);
+  }
+
+  return userAprovacao;
+};
+
+const verificarPermissaoAprovacaoTroca = async (
+  matricula: number,
+  tipoRequisicao: TipoRequisicao
+): Promise<UserAprovacao> => {
+  const userAprovacao = await obterAprovadorTroca(matricula);
+
+  if (
+    Array.isArray(userAprovacao.tipo_requisicao)
+    && userAprovacao.tipo_requisicao.length > 0
+    && !userAprovacao.tipo_requisicao.includes(tipoRequisicao)
+  ) {
+    throw new CustomError(
+      `Usuário sem permissão para aprovar trocas do tipo '${tipoRequisicao}'`,
+      403
+    );
+  }
+
+  return userAprovacao;
 };
 
 const verificarPermissaoSeparacao = async (
@@ -513,58 +544,122 @@ export const criarSolicitacao = async (
 };
 
 export const listarSolicitacoes = async (
-  filters: ListSolicitacaoQuery
+  filters: ListSolicitacaoQuery,
+  userMatricula?: number
 ): Promise<ServiceResult<SolicitacaoResponse>> => {
-  const where: FindOptionsWhere<SolicitacaoBrinde> = {};
-
-  if (filters.status) {
-    where.status = filters.status as StatusSolicitacaoBrinde;
-  }
-
-  if (filters.gerente) {
-    where.gerente = filters.gerente;
-  }
-
-  if (filters.setor) {
-    where.setor = filters.setor;
-  }
-
-  if (filters.tipo_requisicao) {
-    where.tipo_requisicao = filters.tipo_requisicao as TipoRequisicao;
-  }
-
-  if (filters.matricula !== undefined) {
-    where.matricula = filters.matricula;
-  }
-
-  if (filters.rfid !== undefined) {
-    where.rfid = filters.rfid;
-  }
-
-  if (filters.codbarras !== undefined) {
-    where.codbarras = filters.codbarras;
-  }
-
-  if (filters.data_inicial && filters.data_final) {
-    where.created_at = Between(filters.data_inicial, filters.data_final);
-  } else if (filters.data_inicial) {
-    where.created_at = MoreThanOrEqual(filters.data_inicial);
-  } else if (filters.data_final) {
-    where.created_at = LessThanOrEqual(filters.data_final);
-  }
-
   const pageSize = 20;
   const page = filters.page ?? 1;
   const take = pageSize + 1;
   const skip = (page - 1) * pageSize;
 
   try {
-    const results = await repository.find({
-      where,
-      order: { created_at: "DESC" },
-      take,
-      skip,
-    });
+    let permissoesTroca: TipoRequisicao[] | null = [];
+    let possuiPermissaoGlobalTroca = false;
+
+    if (userMatricula !== undefined) {
+      try {
+        const aprovadorTroca = await obterAprovadorTroca(userMatricula);
+        permissoesTroca = aprovadorTroca.tipo_requisicao ?? null;
+        possuiPermissaoGlobalTroca = !Array.isArray(permissoesTroca) || permissoesTroca.length === 0;
+      } catch (error) {
+        if (!(error instanceof CustomError) || error.statusCode !== 403) {
+          throw error;
+        }
+
+        permissoesTroca = [];
+      }
+    }
+
+    if (filters.status === StatusSolicitacaoBrinde.AGUARDANDO_TROCA) {
+      if (userMatricula === undefined) {
+        throw new CustomError("Usuário sem permissão para visualizar solicitações em troca", 403);
+      }
+
+      const aprovadorTroca = await obterAprovadorTroca(userMatricula);
+      if (
+        filters.tipo_requisicao
+        && Array.isArray(aprovadorTroca.tipo_requisicao)
+        && aprovadorTroca.tipo_requisicao.length > 0
+        && !aprovadorTroca.tipo_requisicao.includes(filters.tipo_requisicao as TipoRequisicao)
+      ) {
+        throw new CustomError("Filtro de tipo_requisicao fora das permissões do usuário", 403);
+      }
+    }
+
+    const query = repository.createQueryBuilder("solicitacao");
+
+    if (filters.status) {
+      query.andWhere("solicitacao.status = :status", {
+        status: filters.status,
+      });
+    } else if (possuiPermissaoGlobalTroca) {
+      // usuários globais de troca podem ver todos os status sem restrição adicional
+    } else if (Array.isArray(permissoesTroca) && permissoesTroca.length > 0) {
+      query.andWhere(
+        new Brackets((qb) => {
+          qb.where("solicitacao.status != :statusTroca", {
+            statusTroca: StatusSolicitacaoBrinde.AGUARDANDO_TROCA,
+          }).orWhere(
+            "solicitacao.status = :statusTroca AND solicitacao.tipo_requisicao IN (:...tiposTroca)",
+            {
+              statusTroca: StatusSolicitacaoBrinde.AGUARDANDO_TROCA,
+              tiposTroca: permissoesTroca,
+            }
+          );
+        })
+      );
+    } else {
+      query.andWhere("solicitacao.status != :statusTroca", {
+        statusTroca: StatusSolicitacaoBrinde.AGUARDANDO_TROCA,
+      });
+    }
+
+    if (filters.gerente) {
+      query.andWhere("solicitacao.gerente = :gerente", { gerente: filters.gerente });
+    }
+
+    if (filters.setor) {
+      query.andWhere("solicitacao.setor = :setor", { setor: filters.setor });
+    }
+
+    if (filters.tipo_requisicao) {
+      query.andWhere("solicitacao.tipo_requisicao = :tipoRequisicao", {
+        tipoRequisicao: filters.tipo_requisicao,
+      });
+    }
+
+    if (filters.matricula !== undefined) {
+      query.andWhere("solicitacao.matricula = :matricula", { matricula: filters.matricula });
+    }
+
+    if (filters.rfid !== undefined) {
+      query.andWhere("solicitacao.rfid = :rfid", { rfid: filters.rfid });
+    }
+
+    if (filters.codbarras !== undefined) {
+      query.andWhere("solicitacao.codbarras = :codbarras", { codbarras: filters.codbarras });
+    }
+
+    if (filters.data_inicial && filters.data_final) {
+      query.andWhere("solicitacao.created_at BETWEEN :dataInicial AND :dataFinal", {
+        dataInicial: filters.data_inicial,
+        dataFinal: filters.data_final,
+      });
+    } else if (filters.data_inicial) {
+      query.andWhere("solicitacao.created_at >= :dataInicial", {
+        dataInicial: filters.data_inicial,
+      });
+    } else if (filters.data_final) {
+      query.andWhere("solicitacao.created_at <= :dataFinal", {
+        dataFinal: filters.data_final,
+      });
+    }
+
+    const results = await query
+      .orderBy("solicitacao.created_at", "DESC")
+      .take(take)
+      .skip(skip)
+      .getMany();
 
     const hasMore = results.length > pageSize;
     const data = hasMore ? results.slice(0, pageSize) : results;
@@ -573,7 +668,11 @@ export const listarSolicitacoes = async (
       status: 200,
       body: { data, page, pageSize, hasMore },
     };
-  } catch (_error) {
+  } catch (error) {
+    if (error instanceof CustomError) {
+      throw error;
+    }
+
     throw new CustomError("Erro ao listar solicitacoes", 500);
   }
 };
@@ -606,6 +705,74 @@ export const listarSolicitacoesSeparacao = async (
       status: StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO,
     })
     .andWhere("solicitacao.tipo_requisicao IN (:...tiposPermitidos)", { tiposPermitidos })
+    .orderBy("solicitacao.created_at", "DESC")
+    .skip(skip)
+    .take(take)
+    .getMany();
+
+  const hasMore = entities.length > pageSize;
+  const data = (hasMore ? entities.slice(0, pageSize) : entities).map((item) => ({
+    id: item.id,
+    nome: item.nome,
+    matricula: item.matricula,
+    setor: item.setor,
+    gerente: item.gerente,
+    tipo_requisicao: item.tipo_requisicao,
+    subgrupo_campanha: item.subgrupo_campanha ?? null,
+    genero: item.genero ?? null,
+    brinde_id: item.brinde_id ?? null,
+    marca: item.marca ?? null,
+    modelo: item.modelo ?? null,
+    num_calce: item.num_calce,
+    status: item.status,
+    created_at: item.created_at,
+    data_aprovado: item.data_aprovado ?? null,
+  }));
+
+  return {
+    status: 200,
+    body: { data, page, pageSize, hasMore },
+  };
+};
+
+export const listarSolicitacoesTroca = async (
+  userMatricula: number,
+  filters: ListSolicitacaoSeparacaoQuery
+): Promise<ServiceResult<SolicitacaoSeparacaoResponse>> => {
+  const userAprovacao = await obterAprovadorTroca(userMatricula);
+  const permissoes = userAprovacao.tipo_requisicao ?? null;
+
+  if (
+    filters.tipo_requisicao
+    && Array.isArray(permissoes)
+    && permissoes.length > 0
+    && !permissoes.includes(filters.tipo_requisicao as TipoRequisicao)
+  ) {
+    throw new CustomError("Filtro de tipo_requisicao fora das permissões do usuário", 403);
+  }
+
+  const pageSize = 20;
+  const page = filters.page ?? 1;
+  const take = pageSize + 1;
+  const skip = (page - 1) * pageSize;
+
+  const query = repository
+    .createQueryBuilder("solicitacao")
+    .where("solicitacao.status = :status", {
+      status: StatusSolicitacaoBrinde.AGUARDANDO_TROCA,
+    });
+
+  if (filters.tipo_requisicao) {
+    query.andWhere("solicitacao.tipo_requisicao = :tipoRequisicao", {
+      tipoRequisicao: filters.tipo_requisicao,
+    });
+  } else if (Array.isArray(permissoes) && permissoes.length > 0) {
+    query.andWhere("solicitacao.tipo_requisicao IN (:...tiposPermitidos)", {
+      tiposPermitidos: permissoes,
+    });
+  }
+
+  const entities = await query
     .orderBy("solicitacao.created_at", "DESC")
     .skip(skip)
     .take(take)
@@ -836,6 +1003,90 @@ export const validarSeparacao = async (
     await queryRunner.rollbackTransaction();
     if (error instanceof CustomError) throw error;
     throw new CustomError("Erro ao confirmar separação", 500);
+  } finally {
+    await queryRunner.release();
+  }
+};
+
+export const aprovarTrocaSolicitacao = async (
+  id: string,
+  user_aprovador: number
+): Promise<ServiceResult<SolicitacaoResponse>> => {
+  const queryRunner = AppDataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
+  try {
+    const solicitacao = await queryRunner.manager.findOne(SolicitacaoBrinde, {
+      where: { id },
+      relations: ["voucher"],
+    });
+
+    if (!solicitacao) {
+      throw new CustomError("Solicitação não encontrada", 404);
+    }
+
+    if (solicitacao.status !== StatusSolicitacaoBrinde.AGUARDANDO_TROCA) {
+      throw new CustomError("Solicitação não está aguardando troca", 400);
+    }
+
+    await verificarPermissaoAprovacaoTroca(user_aprovador, solicitacao.tipo_requisicao);
+
+    if (!solicitacao.voucher) {
+      throw new CustomError("Solicitação sem voucher vinculado", 409);
+    }
+
+    if (solicitacao.voucher.status !== StatusSVouncher.RESGATADO || solicitacao.voucher.ativo) {
+      throw new CustomError("Voucher vinculado não está elegível para reativação de troca", 409);
+    }
+
+    const statusAnterior = solicitacao.status;
+    const statusNovo = solicitacao.tipo_requisicao === TipoRequisicao.TESTE_CALCE
+      ? StatusSolicitacaoBrinde.APROVADO
+      : StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO;
+    const now = new Date();
+
+    solicitacao.voucher.status = StatusSVouncher.PENDENTE;
+    solicitacao.voucher.ativo = true;
+    solicitacao.voucher.data_resgate = undefined;
+    solicitacao.voucher.updated_at = now;
+
+    await queryRunner.manager.save(VoucherSolicitacao, solicitacao.voucher);
+
+    solicitacao.status = statusNovo;
+    solicitacao.updated_by = user_aprovador;
+    solicitacao.updated_at = now;
+    solicitacao.data_aprovado = now;
+    solicitacao.gerente_aprovacao = user_aprovador;
+
+    await queryRunner.manager.save(SolicitacaoBrinde, solicitacao);
+
+    await registrarHistorico(queryRunner.manager, {
+      solicitacao,
+      status_anterior: statusAnterior,
+      status_novo: statusNovo,
+      acao: AcaoSolicitacaoHistorico.APROVACAO_TROCA,
+      usuario_matricula: user_aprovador,
+      marca_nova: solicitacao.marca ?? null,
+      modelo_novo: solicitacao.modelo ?? null,
+      metadata: {
+        voucher_id: solicitacao.voucher.id,
+        codigo_voucher: solicitacao.voucher.codigo_voucher,
+        retorno_para: statusNovo,
+        brinde_id: solicitacao.brinde_id ?? null,
+        genero: solicitacao.genero ?? null,
+        subgrupo_campanha: solicitacao.subgrupo_campanha ?? null,
+      },
+    });
+
+    await queryRunner.commitTransaction();
+
+    const solicitacaoAtualizada = await carregarSolicitacaoDetalhe(id);
+    return { status: 200, body: { data: solicitacaoAtualizada } };
+  } catch (error) {
+    await queryRunner.rollbackTransaction();
+    if (error instanceof CustomError) throw error;
+    throw new CustomError("Erro ao aprovar troca de solicitação", 500);
   } finally {
     await queryRunner.release();
   }

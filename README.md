@@ -1,6 +1,6 @@
 # Liberação de Brindes DASS
 
-API backend em `Node.js`, `TypeScript`, `Express`, `TypeORM` e `Zod` para gestão do fluxo de solicitação, aprovação, separação, voucher, retirada e catálogo de brindes da DASS.
+API backend em `Node.js`, `TypeScript`, `Express`, `TypeORM` e `Zod` para gestão do fluxo de solicitação, aprovação, separação, troca, voucher, retirada e catálogo de brindes da DASS.
 
 ## Visão geral
 
@@ -16,7 +16,8 @@ O fluxo atual suporta:
 - aprovação ou rejeição por aprovadores autorizados
 - etapa operacional de separação antes da liberação do voucher
 - geração de voucher transacional
-- retirada por bipagem do voucher
+- retirada por bipagem do voucher com permissão por tabela
+- solicitação de troca para brindes já retirados, com reativação do voucher original
 - histórico persistido das transições da solicitação
 - catálogo administrativo de brindes ativos com vínculo opcional por `brinde_id`
 - dashboard administrativo com resumo, analytics, exportação e atividade recente
@@ -106,9 +107,25 @@ A retirada ocorre em `POST /api/retiradas/bipar`.
 Regras relevantes:
 
 - exige autenticação
-- exige permissão de portaria ou setor autorizado
+- exige cadastro em `user_bipagem`
 - o voucher precisa existir, estar ativo e com status `pendente`
 - ao resgatar o voucher, a solicitação passa para `retirado`
+
+### 5. Troca
+
+O fluxo de troca usa:
+
+- `POST /api/retiradas/solicitar-troca` para iniciar a devolução operacional de um voucher já resgatado
+- `GET /api/solicitacoes/trocas` para fila de análise de troca
+- `POST /api/solicitacoes/:id/aprovar-troca` para reativar o voucher original
+
+Regras relevantes:
+
+- a solicitação de troca só pode começar com voucher `resgatado` e solicitação `retirado`
+- o aprovador de troca precisa estar em `user_aprovacao` com `pode_aprovar_troca = true`
+- quando a troca é aprovada, o voucher original volta para `pendente` e `ativo = true`
+- `teste_calce` volta para `aprovado`
+- os demais tipos voltam para `aguardando_separacao`
 
 ## Tipos, estados e domínio
 
@@ -132,6 +149,7 @@ Regras relevantes:
 
 - `pendente_aprovacao`
 - `aguardando_separacao`
+- `aguardando_troca`
 - `aprovado`
 - `rejeitado`
 - `retirado`
@@ -151,7 +169,9 @@ Regras relevantes:
 - `GET /api/solicitacoes`
 - `GET /api/solicitacoes/:id`
 - `GET /api/solicitacoes/separacao`
+- `GET /api/solicitacoes/trocas`
 - `POST /api/solicitacoes/:id/aprovar`
+- `POST /api/solicitacoes/:id/aprovar-troca`
 - `POST /api/solicitacoes/:id/rejeitar`
 - `POST /api/solicitacoes/:id/separar`
 - `POST /api/solicitacoes/:id/cancelar`
@@ -160,6 +180,7 @@ Regras relevantes:
 
 - `GET /api/retiradas`
 - `POST /api/retiradas/bipar`
+- `POST /api/retiradas/solicitar-troca`
 
 ### Administração
 
@@ -167,6 +188,11 @@ Regras relevantes:
 - `GET /api/admin/user-aprovacao`
 - `GET /api/admin/user-aprovacao/:id`
 - `PATCH /api/admin/user-aprovacao/:id`
+- `POST /api/admin/user-bipagem`
+- `GET /api/admin/user-bipagem`
+- `GET /api/admin/user-bipagem/:id`
+- `PUT /api/admin/user-bipagem/:id`
+- `DELETE /api/admin/user-bipagem/:id`
 - `POST /api/admin/user-separacao`
 - `GET /api/admin/user-separacao`
 - `GET /api/admin/user-separacao/:id`
@@ -258,6 +284,12 @@ npm run migration:run
 ```bash
 npm run dev
 ```
+
+## Documentação complementar
+
+- [Regras de negócio](docs/regras-negocio.md)
+- [Mapeamento de banco](docs/banco-de-dados.md)
+- [Inventário de endpoints](docs/endpoints.md)
 
 O servidor sobe em:
 

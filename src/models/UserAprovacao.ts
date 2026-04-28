@@ -29,9 +29,12 @@ export class UserAprovacao {
     enum: TipoRequisicao,
     enumName: 'tipo_requisicao_enum',
     array: true,
-    default: [TipoRequisicao.BRINDE_INTERNO]
+    nullable: true,
   })
-  tipo_requisicao!: TipoRequisicao[];
+  tipo_requisicao?: TipoRequisicao[] | null;
+
+  @Column({ type: 'boolean', default: false })
+  pode_aprovar_troca!: boolean;
 
   @Column({ type: 'int8', nullable: true })
   updated_by?: number;

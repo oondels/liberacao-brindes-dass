@@ -1,6 +1,6 @@
 # Regras de Negócio e Fluxo Operacional
 
-Este documento consolida o comportamento atual da API de liberação de brindes após a introdução da etapa de separação, do catálogo modular de brindes ativos e dos novos campos de logística.
+Este documento consolida o comportamento atual da API de liberação de brindes após a introdução da etapa de separação, do catálogo modular de brindes ativos, da bipagem por tabela e do fluxo de troca.
 
 ## Visão geral
 
@@ -19,6 +19,7 @@ O sistema controla a concessão de brindes e calçados por meio de:
 - aprovador autorizado
 - operador de separação
 - portaria ou operador de retirada
+- aprovador de troca
 - administrador de permissões e catálogo
 
 ## Tipos de requisição
@@ -156,7 +157,9 @@ O sistema controla a concessão de brindes e calçados por meio de:
 ### Autorização
 
 - exige autenticação
-- permitido para usuários de `automacao`, `portaria` ou com função contendo `portaria`
+- exige cadastro em `user_bipagem`
+- a bipagem é limitada por `tipo_requisicao`
+- se o cadastro não informar tipos, o usuário recebe permissão para todos os tipos de requisição
 
 ### Regras do voucher
 
@@ -170,6 +173,42 @@ O sistema controla a concessão de brindes e calçados por meio de:
 - o voucher passa para `resgatado`
 - o voucher é inativado
 - a solicitação passa para `retirado`
+
+## Regras de troca
+
+### Início operacional da troca
+
+- ocorre em `POST /api/retiradas/solicitar-troca`
+- usa a mesma autorização operacional de `user_bipagem`
+- o voucher precisa existir
+- o voucher precisa estar `resgatado`
+- o voucher precisa estar `ativo = false`
+- a solicitação vinculada precisa estar em `retirado`
+
+### Resultado da solicitação de troca
+
+- a solicitação passa para `aguardando_troca`
+- o voucher permanece o mesmo, ainda `resgatado` e inativo nessa etapa
+- `entregue`, `entregue_por` e `data_entregue` são limpos para recolocar a solicitação no fluxo
+- o histórico registra quem iniciou a troca e quando
+
+### Aprovação da troca
+
+- ocorre em `POST /api/solicitacoes/:id/aprovar-troca`
+- exige autenticação
+- exige middleware `isManager`
+- exige cadastro em `user_aprovacao` com `pode_aprovar_troca = true`
+- quando `user_aprovacao.tipo_requisicao` estiver preenchido, ele limita os tipos que aquele aprovador pode autorizar em troca
+- quando `user_aprovacao.tipo_requisicao` estiver nulo, o aprovador pode atuar em qualquer tipo de troca
+
+### Resultado da aprovação de troca
+
+- o voucher original é reativado com o mesmo `codigo_voucher`
+- o voucher volta para `status = pendente`
+- o voucher volta para `ativo = true`
+- `teste_calce` volta para `aprovado`
+- os demais tipos voltam para `aguardando_separacao`
+- `sandalia`, `campanha` com `brinde_5s`, `genero`, `num_calce`, `brinde_id`, `marca` e `modelo` são preservados
 
 ## Regras de cancelamento
 
@@ -208,6 +247,7 @@ O catálogo administrativo é usado para modularizar a gestão dos itens liberá
 
 - `pendente_aprovacao`
 - `aguardando_separacao`
+- `aguardando_troca`
 - `aprovado`
 - `rejeitado`
 - `retirado`
@@ -230,6 +270,8 @@ Cada solicitação mantém eventos persistidos em tabela própria, cobrindo:
 - confirmação da separação
 - cancelamento
 - retirada
+- solicitação de troca
+- aprovação de troca
 
 Esse histórico também registra alterações de `marca/modelo` e metadados como `brinde_id` e motivo de cancelamento.
 
@@ -263,6 +305,16 @@ flowchart TD
     P -- Não --> X3[Retirada negada]
     P -- Sim --> Q[Resgatar voucher]
     Q --> R[Status: retirado]
+
+    R --> U[Solicitar troca na portaria]
+    U --> V[Status: aguardando_troca]
+    V --> W{Aprovador de troca autorizado?}
+    W -- Não --> X4[Ação bloqueada]
+    W -- Sim --> Y{Tipo = teste_calce?}
+    Y -- Sim --> Z[Reativar voucher]
+    Z --> F
+    Y -- Não --> AA[Reativar voucher]
+    AA --> J
 
     B --> S[Cancelar]
     J --> S

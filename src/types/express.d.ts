@@ -7,6 +7,7 @@ declare global {
       user?: DecodedToken;
       separationPermissions?: TipoRequisicao[];
       bipagemPermissions?: TipoRequisicao[];
+      tradeApprovalPermissions?: TipoRequisicao[] | null;
     }
   }
 }
