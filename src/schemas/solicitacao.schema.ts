@@ -1,22 +1,101 @@
 import { z } from "zod";
 
+const tipoRequisicaoValues = [
+  "teste_calce",
+  "brinde_interno",
+  "pense_aja",
+  "campanha",
+  "falta_zero",
+  "sandalia",
+] as const;
+
+const tipoRequisicaoSeparacaoValues = [
+  "brinde_interno",
+  "pense_aja",
+  "campanha",
+  "falta_zero",
+  "sandalia",
+] as const;
+
+const subgrupoCampanhaValues = [
+  "brigada_incendio",
+  "eficiencia",
+  "hora_extra",
+  "brinde_5s",
+] as const;
+
+const generoValues = ["masculino", "feminino"] as const;
+
+const optionalNonEmptyTrimmedString = (message: string) =>
+  z.preprocess(
+    (value) => {
+      if (typeof value !== "string") {
+        return value;
+      }
+
+      const trimmed = value.trim();
+      return trimmed === "" ? undefined : trimmed;
+    },
+    z.string().min(1, message).optional()
+  );
+
 const numericString = z
   .string()
   .trim()
   .regex(/^\d+$/, "Deve conter apenas numeros");
 
-export const createSolicitacaoSchema = z.object({
-  nome: z.string().trim().min(1, "Nome obrigatorio"),
-  matricula: numericString,
-  setor: z.string().trim().min(1, "Setor obrigatorio"),
-  gerente: z.string().trim().min(1, "Gerente obrigatorio"),
-  tipo_requisicao: z.enum(["teste_calce", "producao", "sobra"]),
-  marca: z.string().trim().min(1, "Marca obrigatoria"),
-  modelo: z.string().trim().min(1, "Modelo obrigatorio"),
-  num_calce: numericString,
-  rfid: numericString.optional(),
-  codbarras: numericString.optional(),
-});
+export const createSolicitacaoSchema = z
+  .object({
+    nome: z.string().trim().min(1, "Nome obrigatorio"),
+    matricula: numericString,
+    setor: z.string().trim().min(1, "Setor obrigatorio"),
+    gerente: z.string().trim().min(1, "Gerente obrigatorio"),
+    tipo_requisicao: z.enum(tipoRequisicaoValues),
+    subgrupo_campanha: z.enum(subgrupoCampanhaValues).optional(),
+    genero: z.enum(generoValues),
+    brinde_id: z.string().uuid("Brinde inválido").optional(),
+    marca: optionalNonEmptyTrimmedString("Marca obrigatoria"),
+    modelo: optionalNonEmptyTrimmedString("Modelo obrigatorio"),
+    num_calce: numericString,
+    rfid: numericString.optional(),
+    codbarras: numericString.optional(),
+  })
+  .superRefine((data, ctx) => {
+    const isCampanha = data.tipo_requisicao === "campanha";
+    const isTesteCalce = data.tipo_requisicao === "teste_calce";
+
+    if (isCampanha && !data.subgrupo_campanha) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Subgrupo de campanha obrigatório",
+        path: ["subgrupo_campanha"],
+      });
+    }
+
+    if (!isCampanha && data.subgrupo_campanha) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Subgrupo de campanha permitido apenas para tipo campanha",
+        path: ["subgrupo_campanha"],
+      });
+    }
+
+    if (isTesteCalce && !data.marca) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Marca obrigatoria",
+        path: ["marca"],
+      });
+    }
+
+    if (isTesteCalce && !data.modelo) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Modelo obrigatorio",
+        path: ["modelo"],
+      });
+    }
+  });
 
 export type CreateSolicitacaoInput = z.infer<typeof createSolicitacaoSchema>;
 
@@ -105,6 +184,8 @@ export const listSolicitacaoQuerySchema = z
     data_final: optionalDate.optional(),
     status: optionalEnum([
       "pendente_aprovacao",
+      "aguardando_separacao",
+      "aguardando_troca",
       "aprovado",
       "rejeitado",
       "retirado",
@@ -112,7 +193,7 @@ export const listSolicitacaoQuerySchema = z
     ]),
     gerente: optionalTrimmedString.optional(),
     setor: optionalTrimmedString.optional(),
-    tipo_requisicao: optionalEnum(["teste_calce", "producao", "sobra"]),
+    tipo_requisicao: optionalEnum([...tipoRequisicaoValues]),
     matricula: optionalInt.optional(),
     rfid: optionalInt.optional(),
     codbarras: optionalInt.optional(),
@@ -133,6 +214,49 @@ export const listSolicitacaoQuerySchema = z
   );
 
 export type ListSolicitacaoQuery = z.infer<typeof listSolicitacaoQuerySchema>;
+
+export const aprovarSolicitacaoSchema = z
+  .object({
+    brinde_id: z.string().uuid("Brinde inválido").optional(),
+    marca: optionalNonEmptyTrimmedString("Marca deve ser informada"),
+    modelo: optionalNonEmptyTrimmedString("Modelo deve ser informado"),
+  })
+  .superRefine((data, ctx) => {
+    if ((data.marca && !data.modelo) || (!data.marca && data.modelo)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Informe marca e modelo juntos para definir o brinde",
+        path: data.marca ? ["modelo"] : ["marca"],
+      });
+    }
+  });
+
+export type AprovarSolicitacaoInput = z.infer<typeof aprovarSolicitacaoSchema>;
+
+export const separarSolicitacaoSchema = z
+  .object({
+    brinde_id: z.string().uuid("Brinde inválido").optional(),
+    marca: optionalNonEmptyTrimmedString("Marca deve ser informada"),
+    modelo: optionalNonEmptyTrimmedString("Modelo deve ser informado"),
+  })
+  .superRefine((data, ctx) => {
+    if ((data.marca && !data.modelo) || (!data.marca && data.modelo)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Informe marca e modelo juntos para sobrescrever o brinde",
+        path: data.marca ? ["modelo"] : ["marca"],
+      });
+    }
+  });
+
+export type SepararSolicitacaoInput = z.infer<typeof separarSolicitacaoSchema>;
+
+export const listSolicitacaoSeparacaoQuerySchema = z.object({
+  page: optionalPage.optional().default(1),
+  tipo_requisicao: optionalEnum([...tipoRequisicaoSeparacaoValues]),
+});
+
+export type ListSolicitacaoSeparacaoQuery = z.infer<typeof listSolicitacaoSeparacaoQuerySchema>;
 
 export const cancelSolicitacaoSchema = z.object({
   motivo: z.string().trim().min(1, "Motivo do cancelamento é obrigatório"),

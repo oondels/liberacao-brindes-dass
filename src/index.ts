@@ -18,7 +18,7 @@ const bootstrap = async () => {
 
   app.get("/", (req: Request, res: Response) => res.send("App liberacao de brindes esta rodando!"));
 
-  app.use("/api", apiRouter);
+  app.use(apiRouter);
 
   app.use((error: any, req: Request, res: Response, next: NextFunction) => {
 
@@ -38,7 +38,7 @@ const bootstrap = async () => {
   return;
 });
 
-  app.listen(port, () => console.log(`Application is running at http://localhost:${port}`));
+  app.listen(port, () => console.log(`Gifts application is running at port ${port}`));
 }
 
 bootstrap().catch(error => {

@@ -3,6 +3,15 @@ import { DataSource } from "typeorm";
 import { config } from "./dotenv";
 import { SolicitacaoBrinde } from "../models/Solicitacao";
 import { VoucherSolicitacao } from "../models/VoucherSolicitacao";
+import { User} from "../models/User";
+import { UserAprovacao } from "../models/UserAprovacao";
+import { NotificationEmail } from "../models/NotificationEmail";
+import { UserCriacaoSolicitacao } from "../models/UserCriacaoSolicitacao";
+import { UserSeparacao } from "../models/UserSeparacao";
+import { SolicitacaoHistorico } from "../models/SolicitacaoHistorico";
+import { BrindeAtivo } from "../models/BrindeAtivo";
+import { UserBipagem } from "../models/UserBipagem";
+import { UserAdmin } from "../models/UserAdmin";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -13,7 +22,19 @@ export const AppDataSource = new DataSource({
   database: config.database.name,
   synchronize: false,
   logging: false,
-  entities: [SolicitacaoBrinde, VoucherSolicitacao],
+  entities: [
+    SolicitacaoBrinde,
+    VoucherSolicitacao,
+    User,
+    UserAprovacao,
+    UserCriacaoSolicitacao,
+    UserSeparacao,
+    UserBipagem,
+    UserAdmin,
+    SolicitacaoHistorico,
+    BrindeAtivo,
+    NotificationEmail,
+  ],
   subscribers: [],
   migrations: [path.join(__dirname, '../migrations/*.{ts,js}')],
   migrationsTableName: "liberacao_brinde",
