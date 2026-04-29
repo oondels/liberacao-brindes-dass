@@ -73,8 +73,4 @@ export class User {
 
   @Column({ type: 'bigint', nullable: true })
   rfid!: string;
-
-  // Relação com Emails
-  @Column({nullable: true})
-  email!: string;
 }

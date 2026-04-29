@@ -14,7 +14,7 @@ export const openApiSpec: OpenAPISpec = {
     description:
       "Documentação operacional da API de solicitações, aprovação, separação, troca, retirada e gestão administrativa de brindes.",
   },
-  servers: [{ url: "/api", description: "Base relativa da API" }],
+  servers: [{ url: "/", description: "Base relativa da API" }],
   tags: [
     { name: "Health", description: "Verificação simples da aplicação" },
     { name: "Solicitações", description: "Fluxo principal de solicitações de brinde" },
@@ -102,6 +102,57 @@ export const openApiSpec: OpenAPISpec = {
         required: ["codigo_voucher"],
         properties: {
           codigo_voucher: { type: "string" },
+        },
+      },
+      VoucherRetiradaPreviewResponse: {
+        type: "object",
+        properties: {
+          data: {
+            type: "object",
+            properties: {
+              id: { type: "string", format: "uuid" },
+              codigo_voucher: { type: "string" },
+              status: { type: "string", enum: ["pendente", "resgatado", "cancelado"] },
+              ativo: { type: "boolean" },
+              data_resgate: { type: "string", format: "date-time", nullable: true },
+              created_at: { type: "string", format: "date-time" },
+              solicitacao: {
+                type: "object",
+                properties: {
+                  id: { type: "string", format: "uuid" },
+                  status: { $ref: "#/components/schemas/StatusSolicitacao" },
+                  created_at: { type: "string", format: "date-time" },
+                  data_aprovado: { type: "string", format: "date-time", nullable: true },
+                  colaborador: {
+                    type: "object",
+                    properties: {
+                      nome: { type: "string" },
+                      matricula: { type: "number" },
+                      setor: { type: "string" },
+                    },
+                  },
+                  brinde: {
+                    type: "object",
+                    properties: {
+                      tipo_requisicao: { $ref: "#/components/schemas/TipoRequisicao" },
+                      subgrupo_campanha: { $ref: "#/components/schemas/SubgrupoCampanha" },
+                      genero: { $ref: "#/components/schemas/GeneroSolicitacao" },
+                      marca: { type: "string", nullable: true },
+                      modelo: { type: "string", nullable: true },
+                      num_calce: { type: "number" },
+                    },
+                  },
+                  aprovador: {
+                    type: "object",
+                    properties: {
+                      matricula: { type: "number", nullable: true },
+                      nome: { type: "string", nullable: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       },
       UserAprovacaoRequest: {
@@ -278,6 +329,22 @@ export const openApiSpec: OpenAPISpec = {
         summary: "Resgata um voucher pendente",
         requestBody: { required: true, content: jsonContent({ $ref: "#/components/schemas/BiparVoucherRequest" }) },
         responses: { "200": { description: "Voucher resgatado" } },
+      },
+    },
+    "/retiradas/voucher/{codigo}": {
+      get: {
+        tags: ["Retiradas"],
+        security: [{ cookieAuth: [] }],
+        summary: "Consulta o voucher para conferência antes da liberação",
+        parameters: [{ in: "path", name: "codigo", required: true, schema: { type: "string" } }],
+        responses: {
+          "200": {
+            description: "Dados do voucher e da solicitação para conferência",
+            content: jsonContent({ $ref: "#/components/schemas/VoucherRetiradaPreviewResponse" }),
+          },
+          "404": { description: "Voucher não encontrado" },
+          "403": { description: "Usuário sem permissão para o tipo de requisição" },
+        },
       },
     },
     "/retiradas/solicitar-troca": {
@@ -492,7 +559,7 @@ export const renderSwaggerHtml = (): string => `<!DOCTYPE html>
     <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
     <script>
       window.ui = SwaggerUIBundle({
-        url: "/api/openapi.json",
+        url: "/openapi.json",
         dom_id: "#swagger-ui",
         deepLinking: true,
         persistAuthorization: true,

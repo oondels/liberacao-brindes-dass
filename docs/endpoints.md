@@ -4,14 +4,14 @@ Resumo objetivo das rotas disponíveis na aplicação.
 
 ## Base
 
-- prefixo principal: `/api`
+- prefixo principal: `/`
 - autenticação: cookie `token`
-- documentação Swagger UI: `GET /api/docs`
-- especificação OpenAPI JSON: `GET /api/openapi.json`
+- documentação Swagger UI: `GET /docs`
+- especificação OpenAPI JSON: `GET /openapi.json`
 
 ## Solicitações
 
-### `POST /api/solicitacoes`
+### `POST /solicitacoes`
 
 Cria uma nova solicitação.
 
@@ -25,7 +25,7 @@ Campos de destaque:
 - `marca`
 - `modelo`
 
-### `GET /api/solicitacoes`
+### `GET /solicitacoes`
 
 Lista solicitações com filtros por:
 
@@ -46,7 +46,7 @@ Regras de acesso:
 - os demais perfis veem exclusivamente os `tipo_requisicao` do seu cadastro
 - status `aguardando_troca` só aparece para aprovadores com `pode_aprovar_troca = true`
 
-### `GET /api/solicitacoes/:id`
+### `GET /solicitacoes/:id`
 
 Retorna detalhe da solicitação com:
 
@@ -55,45 +55,58 @@ Retorna detalhe da solicitação com:
 - histórico
 - bloco de separação derivado
 
-### `GET /api/solicitacoes/separacao`
+### `GET /solicitacoes/separacao`
 
 Lista a fila operacional de separação para usuários autorizados.
 
-### `GET /api/solicitacoes/trocas`
+### `GET /solicitacoes/trocas`
 
 Lista a fila de solicitações em `aguardando_troca` para aprovadores com `pode_aprovar_troca = true`.
 
-### `POST /api/solicitacoes/:id/aprovar`
+### `POST /solicitacoes/:id/aprovar`
 
 Aprova a solicitação.
 
-### `POST /api/solicitacoes/:id/aprovar-troca`
+### `POST /solicitacoes/:id/aprovar-troca`
 
 Reativa o voucher original e recoloca a solicitação no fluxo após aprovação da troca.
 
-### `POST /api/solicitacoes/:id/rejeitar`
+### `POST /solicitacoes/:id/rejeitar`
 
 Rejeita a solicitação.
 
-### `POST /api/solicitacoes/:id/separar`
+### `POST /solicitacoes/:id/separar`
 
 Confirma a separação e consolida o brinde final.
 
-### `POST /api/solicitacoes/:id/cancelar`
+### `POST /solicitacoes/:id/cancelar`
 
 Cancela a solicitação.
 
 ## Retiradas
 
-### `GET /api/retiradas`
+### `GET /retiradas`
 
 Endpoint de preview.
 
-### `POST /api/retiradas/bipar`
+### `GET /retiradas/voucher/:codigo`
+
+Consulta os dados do voucher e da solicitação sem alterar o status.
+
+Retorna:
+
+- dados do voucher
+- dados do colaborador
+- dados do brinde
+- datas de solicitação e aprovação
+- aprovador
+- status atuais do voucher e da solicitação
+
+### `POST /retiradas/bipar`
 
 Realiza a retirada por `codigo_voucher`.
 
-### `POST /api/retiradas/solicitar-troca`
+### `POST /retiradas/solicitar-troca`
 
 Recebe um `codigo_voucher` já resgatado e move a solicitação para `aguardando_troca`.
 
@@ -101,11 +114,11 @@ Recebe um `codigo_voucher` já resgatado e move a solicitação para `aguardando
 
 ### Administradores
 
-- `POST /api/admin/user-admin`
-- `GET /api/admin/user-admin`
-- `GET /api/admin/user-admin/:id`
-- `PUT /api/admin/user-admin/:id`
-- `DELETE /api/admin/user-admin/:id`
+- `POST /admin/user-admin`
+- `GET /admin/user-admin`
+- `GET /admin/user-admin/:id`
+- `PUT /admin/user-admin/:id`
+- `DELETE /admin/user-admin/:id`
 
 Observações:
 
@@ -115,10 +128,10 @@ Observações:
 
 ### Aprovadores
 
-- `POST /api/admin/user-aprovacao`
-- `GET /api/admin/user-aprovacao`
-- `GET /api/admin/user-aprovacao/:id`
-- `PATCH /api/admin/user-aprovacao/:id`
+- `POST /admin/user-aprovacao`
+- `GET /admin/user-aprovacao`
+- `GET /admin/user-aprovacao/:id`
+- `PATCH /admin/user-aprovacao/:id`
 
 Observações:
 
@@ -127,35 +140,35 @@ Observações:
 
 ### Operadores de separação
 
-- `POST /api/admin/user-separacao`
-- `GET /api/admin/user-separacao`
-- `GET /api/admin/user-separacao/:id`
-- `PUT /api/admin/user-separacao/:id`
-- `DELETE /api/admin/user-separacao/:id`
+- `POST /admin/user-separacao`
+- `GET /admin/user-separacao`
+- `GET /admin/user-separacao/:id`
+- `PUT /admin/user-separacao/:id`
+- `DELETE /admin/user-separacao/:id`
 
 ### Operadores de bipagem
 
-- `POST /api/admin/user-bipagem`
-- `GET /api/admin/user-bipagem`
-- `GET /api/admin/user-bipagem/:id`
-- `PUT /api/admin/user-bipagem/:id`
-- `DELETE /api/admin/user-bipagem/:id`
+- `POST /admin/user-bipagem`
+- `GET /admin/user-bipagem`
+- `GET /admin/user-bipagem/:id`
+- `PUT /admin/user-bipagem/:id`
+- `DELETE /admin/user-bipagem/:id`
 
 ### Catálogo de brindes
 
-- `POST /api/admin/brindes`
-- `GET /api/admin/brindes`
-- `GET /api/admin/brindes/:id`
-- `PUT /api/admin/brindes/:id`
-- `DELETE /api/admin/brindes/:id`
+- `POST /admin/brindes`
+- `GET /admin/brindes`
+- `GET /admin/brindes/:id`
+- `PUT /admin/brindes/:id`
+- `DELETE /admin/brindes/:id`
 
 ### Usuários autorizados a criar solicitação
 
-- `POST /api/user-solicitacao`
-- `GET /api/user-solicitacao`
-- `GET /api/user-solicitacao/:id`
-- `PUT /api/user-solicitacao/:id`
-- `DELETE /api/user-solicitacao/:id`
+- `POST /user-solicitacao`
+- `GET /user-solicitacao`
+- `GET /user-solicitacao/:id`
+- `PUT /user-solicitacao/:id`
+- `DELETE /user-solicitacao/:id`
 
 Observações:
 
@@ -163,10 +176,10 @@ Observações:
 
 ## Dashboard
 
-- `GET /api/admin/dashboard/summary`
-- `GET /api/admin/dashboard/analytics`
-- `GET /api/admin/dashboard/export-solicitacoes`
-- `GET /api/admin/dashboard/recent-activity`
+- `GET /admin/dashboard/summary`
+- `GET /admin/dashboard/analytics`
+- `GET /admin/dashboard/export-solicitacoes`
+- `GET /admin/dashboard/recent-activity`
 
 Observações:
 

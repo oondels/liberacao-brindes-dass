@@ -18,7 +18,7 @@ const bootstrap = async () => {
 
   app.get("/", (req: Request, res: Response) => res.send("App liberacao de brindes esta rodando!"));
 
-  app.use("/api", apiRouter);
+  app.use(apiRouter);
 
   app.use((error: any, req: Request, res: Response, next: NextFunction) => {
 

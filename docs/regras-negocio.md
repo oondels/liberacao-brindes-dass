@@ -44,7 +44,7 @@ O sistema aplica autorização por papel operacional e escopo por `tipo_requisic
 
 ### Regras de listagem de solicitações
 
-- `GET /api/solicitacoes` exige que o usuário seja:
+- `GET /solicitacoes` exige que o usuário seja:
   - `Admin Master`
   - `Admin`
   - `Aprovador`
@@ -211,7 +211,7 @@ O sistema aplica autorização por papel operacional e escopo por `tipo_requisic
 
 ### Início operacional da troca
 
-- ocorre em `POST /api/retiradas/solicitar-troca`
+- ocorre em `POST /retiradas/solicitar-troca`
 - usa a mesma autorização operacional de `user_bipagem`
 - o voucher precisa existir
 - o voucher precisa estar `resgatado`
@@ -227,7 +227,7 @@ O sistema aplica autorização por papel operacional e escopo por `tipo_requisic
 
 ### Aprovação da troca
 
-- ocorre em `POST /api/solicitacoes/:id/aprovar-troca`
+- ocorre em `POST /solicitacoes/:id/aprovar-troca`
 - exige autenticação
 - exige middleware `isManager`
 - exige cadastro em `user_aprovacao` com `pode_aprovar_troca = true`
@@ -381,5 +381,5 @@ flowchart TD
 
 ## Observações
 
-- `GET /api/retiradas` ainda é somente um preview
+- `GET /retiradas` ainda é somente um preview
 - o sistema já suporta infraestrutura de notificação, mas o fluxo principal ainda não depende dela para operar

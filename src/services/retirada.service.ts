@@ -1,6 +1,7 @@
 import { AppDataSource } from "../config/db";
 import { SolicitacaoBrinde, StatusSolicitacaoBrinde, TipoRequisicao } from "../models/Solicitacao";
 import { AcaoSolicitacaoHistorico, SolicitacaoHistorico } from "../models/SolicitacaoHistorico";
+import { User } from "../models/User";
 import { StatusSVouncher, VoucherSolicitacao } from "../models/VoucherSolicitacao";
 import { BiparVoucherInput } from "../schemas/retirada.schema";
 import { ServiceResult } from "../types/service";
@@ -16,6 +17,38 @@ type BiparRetiradaSuccess = {
 type SolicitarTrocaSuccess = BiparRetiradaSuccess;
 type BiparRetiradaResponse = BiparRetiradaSuccess | ErrorResponse;
 type SolicitarTrocaResponse = SolicitarTrocaSuccess | ErrorResponse;
+type VoucherRetiradaPreview = {
+  id: string;
+  codigo_voucher: string;
+  status: StatusSVouncher;
+  ativo: boolean;
+  data_resgate: Date | null;
+  created_at: Date;
+  solicitacao: {
+    id: string;
+    status: StatusSolicitacaoBrinde;
+    created_at: Date;
+    data_aprovado: Date | null;
+    colaborador: {
+      nome: string;
+      matricula: number;
+      setor: string;
+    };
+    brinde: {
+      tipo_requisicao: TipoRequisicao;
+      subgrupo_campanha: string | null;
+      genero: string | null;
+      marca: string | null;
+      modelo: string | null;
+      num_calce: number;
+    };
+    aprovador: {
+      matricula: number | null;
+      nome: string | null;
+    };
+  };
+};
+type VoucherRetiradaPreviewResponse = { data: VoucherRetiradaPreview } | ErrorResponse;
 
 const notImplemented = (): ServiceResult<ErrorResponse> => ({
   status: 501,
@@ -25,15 +58,38 @@ const notImplemented = (): ServiceResult<ErrorResponse> => ({
 export const previewRetirada = async (): Promise<ServiceResult<ErrorResponse>> =>
   notImplemented();
 
-export const biparRetirada = async (
-  input: BiparVoucherInput & { matricula?: number; tipos_permitidos?: TipoRequisicao[] }
-): Promise<ServiceResult<BiparRetiradaResponse>> => {
+const carregarVoucherComSolicitacao = async (codigoVoucher: string) => {
   const voucherRepo = AppDataSource.getRepository(VoucherSolicitacao);
 
-  const voucher = await voucherRepo.findOne({
-    where: { codigo_voucher: input.codigo_voucher },
+  return voucherRepo.findOne({
+    where: { codigo_voucher: codigoVoucher },
     relations: ["solicitacao"],
   });
+};
+
+const validarPermissaoBipagem = (
+  tiposPermitidos: TipoRequisicao[] | undefined,
+  tipoSolicitacao: TipoRequisicao,
+  operacao: "bipagem de retiradas" | "solicitar trocas" | "consultar vouchers"
+): ServiceResult<ErrorResponse> | null => {
+  if (!tiposPermitidos || tiposPermitidos.length === 0) {
+    return { status: 403, body: { error: `Usuário sem permissão para ${operacao}` } };
+  }
+
+  if (!tiposPermitidos.includes(tipoSolicitacao)) {
+    return {
+      status: 403,
+      body: { error: `Usuário sem permissão para ${operacao} do tipo '${tipoSolicitacao}'` },
+    };
+  }
+
+  return null;
+};
+
+export const buscarVoucherParaRetirada = async (
+  input: { codigo_voucher: string; tipos_permitidos?: TipoRequisicao[] }
+): Promise<ServiceResult<VoucherRetiradaPreviewResponse>> => {
+  const voucher = await carregarVoucherComSolicitacao(input.codigo_voucher);
 
   if (!voucher) {
     return { status: 404, body: { error: "Voucher não encontrado" } };
@@ -43,15 +99,80 @@ export const biparRetirada = async (
     return { status: 409, body: { error: "Voucher sem solicitação vinculada" } };
   }
 
-  if (!input.tipos_permitidos || input.tipos_permitidos.length === 0) {
-    return { status: 403, body: { error: "Usuário sem permissão para bipagem de retiradas" } };
+  const validacaoPermissao = validarPermissaoBipagem(
+    input.tipos_permitidos,
+    voucher.solicitacao.tipo_requisicao,
+    "consultar vouchers"
+  );
+
+  if (validacaoPermissao) {
+    return validacaoPermissao;
   }
 
-  if (!input.tipos_permitidos.includes(voucher.solicitacao.tipo_requisicao)) {
-    return {
-      status: 403,
-      body: { error: `Usuário sem permissão para bipar retiradas do tipo '${voucher.solicitacao.tipo_requisicao}'` },
-    };
+  const aprovador = voucher.solicitacao.gerente_aprovacao
+    ? await AppDataSource.getRepository(User).findOne({
+        where: { matricula: String(voucher.solicitacao.gerente_aprovacao) },
+      })
+    : null;
+
+  return {
+    status: 200,
+    body: {
+      data: {
+        id: voucher.id,
+        codigo_voucher: voucher.codigo_voucher,
+        status: voucher.status,
+        ativo: voucher.ativo,
+        data_resgate: voucher.data_resgate ?? null,
+        created_at: voucher.created_at,
+        solicitacao: {
+          id: voucher.solicitacao.id,
+          status: voucher.solicitacao.status,
+          created_at: voucher.solicitacao.created_at,
+          data_aprovado: voucher.solicitacao.data_aprovado ?? null,
+          colaborador: {
+            nome: voucher.solicitacao.nome,
+            matricula: voucher.solicitacao.matricula,
+            setor: voucher.solicitacao.setor,
+          },
+          brinde: {
+            tipo_requisicao: voucher.solicitacao.tipo_requisicao,
+            subgrupo_campanha: voucher.solicitacao.subgrupo_campanha ?? null,
+            genero: voucher.solicitacao.genero ?? null,
+            marca: voucher.solicitacao.marca ?? null,
+            modelo: voucher.solicitacao.modelo ?? null,
+            num_calce: voucher.solicitacao.num_calce,
+          },
+          aprovador: {
+            matricula: voucher.solicitacao.gerente_aprovacao ?? null,
+            nome: aprovador?.nome ?? null,
+          },
+        },
+      },
+    },
+  };
+};
+
+export const biparRetirada = async (
+  input: BiparVoucherInput & { matricula?: number; tipos_permitidos?: TipoRequisicao[] }
+): Promise<ServiceResult<BiparRetiradaResponse>> => {
+  const voucher = await carregarVoucherComSolicitacao(input.codigo_voucher);
+
+  if (!voucher) {
+    return { status: 404, body: { error: "Voucher não encontrado" } };
+  }
+
+  if (!voucher.solicitacao) {
+    return { status: 409, body: { error: "Voucher sem solicitação vinculada" } };
+  }
+
+  const validacaoPermissao = validarPermissaoBipagem(
+    input.tipos_permitidos,
+    voucher.solicitacao.tipo_requisicao,
+    "bipagem de retiradas"
+  );
+  if (validacaoPermissao) {
+    return validacaoPermissao;
   }
 
   if (!voucher.ativo) {
@@ -110,12 +231,7 @@ export const biparRetirada = async (
 export const solicitarTroca = async (
   input: BiparVoucherInput & { matricula?: number; tipos_permitidos?: TipoRequisicao[] }
 ): Promise<ServiceResult<SolicitarTrocaResponse>> => {
-  const voucherRepo = AppDataSource.getRepository(VoucherSolicitacao);
-
-  const voucher = await voucherRepo.findOne({
-    where: { codigo_voucher: input.codigo_voucher },
-    relations: ["solicitacao"],
-  });
+  const voucher = await carregarVoucherComSolicitacao(input.codigo_voucher);
 
   if (!voucher) {
     return { status: 404, body: { error: "Voucher não encontrado" } };
@@ -125,17 +241,13 @@ export const solicitarTroca = async (
     return { status: 409, body: { error: "Voucher sem solicitação vinculada" } };
   }
 
-  if (!input.tipos_permitidos || input.tipos_permitidos.length === 0) {
-    return { status: 403, body: { error: "Usuário sem permissão para solicitar trocas" } };
-  }
-
-  if (!input.tipos_permitidos.includes(voucher.solicitacao.tipo_requisicao)) {
-    return {
-      status: 403,
-      body: {
-        error: `Usuário sem permissão para solicitar troca do tipo '${voucher.solicitacao.tipo_requisicao}'`,
-      },
-    };
+  const validacaoPermissao = validarPermissaoBipagem(
+    input.tipos_permitidos,
+    voucher.solicitacao.tipo_requisicao,
+    "solicitar trocas"
+  );
+  if (validacaoPermissao) {
+    return validacaoPermissao;
   }
 
   if (voucher.ativo) {

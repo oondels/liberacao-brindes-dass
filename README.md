@@ -2,7 +2,7 @@
 
 API backend em `Node.js`, `TypeScript`, `Express`, `TypeORM` e `Zod` para gestão do fluxo de solicitação, aprovação, separação, troca, voucher, retirada e catálogo de brindes da DASS.
 
-Swagger disponível em `GET /api/docs` e especificação OpenAPI em `GET /api/openapi.json`.
+Swagger disponível em `GET /docs` e especificação OpenAPI em `GET /openapi.json`.
 
 ## Visão geral
 
@@ -76,7 +76,7 @@ Perfis relevantes:
 
 Regras de visibilidade:
 
-- `GET /api/solicitacoes` não é uma listagem aberta para qualquer usuário autenticado
+- `GET /solicitacoes` não é uma listagem aberta para qualquer usuário autenticado
 - `Admin Master` vê todos os tipos e todos os status
 - `Admin` vê apenas os `tipo_requisicao` cadastrados em `user_admin`
 - `Aprovador` vê apenas os `tipo_requisicao` cadastrados em `user_aprovacao`
@@ -87,7 +87,7 @@ Regras de visibilidade:
 
 ### 1. Criação da solicitação
 
-O usuário autenticado cria a solicitação em `POST /api/solicitacoes`.
+O usuário autenticado cria a solicitação em `POST /solicitacoes`.
 
 Regras relevantes:
 
@@ -102,7 +102,7 @@ Regras relevantes:
 
 ### 2. Aprovação
 
-A aprovação ocorre em `POST /api/solicitacoes/:id/aprovar`.
+A aprovação ocorre em `POST /solicitacoes/:id/aprovar`.
 
 Regras relevantes:
 
@@ -115,7 +115,7 @@ Regras relevantes:
 
 ### 3. Separação
 
-A separação ocorre em `POST /api/solicitacoes/:id/separar`.
+A separação ocorre em `POST /solicitacoes/:id/separar`.
 
 Regras relevantes:
 
@@ -127,7 +127,7 @@ Regras relevantes:
 
 ### 4. Retirada
 
-A retirada ocorre em `POST /api/retiradas/bipar`.
+A retirada ocorre em `POST /retiradas/bipar`.
 
 Regras relevantes:
 
@@ -140,9 +140,9 @@ Regras relevantes:
 
 O fluxo de troca usa:
 
-- `POST /api/retiradas/solicitar-troca` para iniciar a devolução operacional de um voucher já resgatado
-- `GET /api/solicitacoes/trocas` para fila de análise de troca
-- `POST /api/solicitacoes/:id/aprovar-troca` para reativar o voucher original
+- `POST /retiradas/solicitar-troca` para iniciar a devolução operacional de um voucher já resgatado
+- `GET /solicitacoes/trocas` para fila de análise de troca
+- `POST /solicitacoes/:id/aprovar-troca` para reativar o voucher original
 
 Regras relevantes:
 
@@ -190,59 +190,60 @@ Regras relevantes:
 
 ### Documentação
 
-- `GET /api/docs`
-- `GET /api/openapi.json`
+- `GET /docs`
+- `GET /openapi.json`
 
 ### Solicitações
 
-- `POST /api/solicitacoes`
-- `GET /api/solicitacoes`
-- `GET /api/solicitacoes/:id`
-- `GET /api/solicitacoes/separacao`
-- `GET /api/solicitacoes/trocas`
-- `POST /api/solicitacoes/:id/aprovar`
-- `POST /api/solicitacoes/:id/aprovar-troca`
-- `POST /api/solicitacoes/:id/rejeitar`
-- `POST /api/solicitacoes/:id/separar`
-- `POST /api/solicitacoes/:id/cancelar`
+- `POST /solicitacoes`
+- `GET /solicitacoes`
+- `GET /solicitacoes/:id`
+- `GET /solicitacoes/separacao`
+- `GET /solicitacoes/trocas`
+- `POST /solicitacoes/:id/aprovar`
+- `POST /solicitacoes/:id/aprovar-troca`
+- `POST /solicitacoes/:id/rejeitar`
+- `POST /solicitacoes/:id/separar`
+- `POST /solicitacoes/:id/cancelar`
 
 ### Retiradas
 
-- `GET /api/retiradas`
-- `POST /api/retiradas/bipar`
-- `POST /api/retiradas/solicitar-troca`
+- `GET /retiradas`
+- `GET /retiradas/voucher/:codigo`
+- `POST /retiradas/bipar`
+- `POST /retiradas/solicitar-troca`
 
 ### Administração
 
-- `POST /api/admin/user-admin`
-- `GET /api/admin/user-admin`
-- `GET /api/admin/user-admin/:id`
-- `PUT /api/admin/user-admin/:id`
-- `DELETE /api/admin/user-admin/:id`
-- `POST /api/admin/user-aprovacao`
-- `GET /api/admin/user-aprovacao`
-- `GET /api/admin/user-aprovacao/:id`
-- `PATCH /api/admin/user-aprovacao/:id`
-- `POST /api/admin/user-bipagem`
-- `GET /api/admin/user-bipagem`
-- `GET /api/admin/user-bipagem/:id`
-- `PUT /api/admin/user-bipagem/:id`
-- `DELETE /api/admin/user-bipagem/:id`
-- `POST /api/admin/user-separacao`
-- `GET /api/admin/user-separacao`
-- `GET /api/admin/user-separacao/:id`
-- `PUT /api/admin/user-separacao/:id`
-- `DELETE /api/admin/user-separacao/:id`
-- `POST /api/admin/brindes`
-- `GET /api/admin/brindes`
-- `GET /api/admin/brindes/:id`
-- `PUT /api/admin/brindes/:id`
-- `DELETE /api/admin/brindes/:id`
-- `POST /api/user-solicitacao`
-- `GET /api/user-solicitacao`
-- `GET /api/user-solicitacao/:id`
-- `PUT /api/user-solicitacao/:id`
-- `DELETE /api/user-solicitacao/:id`
+- `POST /admin/user-admin`
+- `GET /admin/user-admin`
+- `GET /admin/user-admin/:id`
+- `PUT /admin/user-admin/:id`
+- `DELETE /admin/user-admin/:id`
+- `POST /admin/user-aprovacao`
+- `GET /admin/user-aprovacao`
+- `GET /admin/user-aprovacao/:id`
+- `PATCH /admin/user-aprovacao/:id`
+- `POST /admin/user-bipagem`
+- `GET /admin/user-bipagem`
+- `GET /admin/user-bipagem/:id`
+- `PUT /admin/user-bipagem/:id`
+- `DELETE /admin/user-bipagem/:id`
+- `POST /admin/user-separacao`
+- `GET /admin/user-separacao`
+- `GET /admin/user-separacao/:id`
+- `PUT /admin/user-separacao/:id`
+- `DELETE /admin/user-separacao/:id`
+- `POST /admin/brindes`
+- `GET /admin/brindes`
+- `GET /admin/brindes/:id`
+- `PUT /admin/brindes/:id`
+- `DELETE /admin/brindes/:id`
+- `POST /user-solicitacao`
+- `GET /user-solicitacao`
+- `GET /user-solicitacao/:id`
+- `PUT /user-solicitacao/:id`
+- `DELETE /user-solicitacao/:id`
 
 Escopo administrativo:
 
@@ -252,10 +253,10 @@ Escopo administrativo:
 
 ### Dashboard
 
-- `GET /api/admin/dashboard/summary`
-- `GET /api/admin/dashboard/analytics`
-- `GET /api/admin/dashboard/export-solicitacoes`
-- `GET /api/admin/dashboard/recent-activity`
+- `GET /admin/dashboard/summary`
+- `GET /admin/dashboard/analytics`
+- `GET /admin/dashboard/export-solicitacoes`
+- `GET /admin/dashboard/recent-activity`
 
 ## Configuração do ambiente
 
@@ -331,7 +332,7 @@ npm run dev
 - [Regras de negócio](docs/regras-negocio.md)
 - [Mapeamento de banco](docs/banco-de-dados.md)
 - [Inventário de endpoints](docs/endpoints.md)
-- Swagger UI: `/api/docs`
+- Swagger UI: `/docs`
 
 O servidor sobe em:
 
@@ -396,7 +397,7 @@ Mapeamento detalhado das tabelas:
 
 ## Limitações e observações atuais
 
-- `GET /api/retiradas` ainda é apenas um endpoint de preview
+- `GET /retiradas` ainda é apenas um endpoint de preview
 - não há suíte automatizada de testes no repositório
 - o CORS está configurado estaticamente em [src/index.ts](/home/oendel/code/dass/liberacao_tenis_dass/src/index.ts:1)
 - o fluxo usa catálogo de brindes, mas não controla saldo de estoque; o cadastro representa itens ativos disponíveis, não inventário quantitativo
