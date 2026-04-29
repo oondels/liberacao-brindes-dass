@@ -545,7 +545,13 @@ export const criarSolicitacao = async (
 
 export const listarSolicitacoes = async (
   filters: ListSolicitacaoQuery,
-  userMatricula?: number
+  access: {
+    userMatricula?: number;
+    isMasterAdmin: boolean;
+    allowedTypes: TipoRequisicao[] | null;
+    canApproveTrade: boolean;
+    tradeApprovalPermissions: TipoRequisicao[] | null;
+  }
 ): Promise<ServiceResult<SolicitacaoResponse>> => {
   const pageSize = 20;
   const page = filters.page ?? 1;
@@ -553,34 +559,21 @@ export const listarSolicitacoes = async (
   const skip = (page - 1) * pageSize;
 
   try {
-    let permissoesTroca: TipoRequisicao[] | null = [];
-    let possuiPermissaoGlobalTroca = false;
-
-    if (userMatricula !== undefined) {
-      try {
-        const aprovadorTroca = await obterAprovadorTroca(userMatricula);
-        permissoesTroca = aprovadorTroca.tipo_requisicao ?? null;
-        possuiPermissaoGlobalTroca = !Array.isArray(permissoesTroca) || permissoesTroca.length === 0;
-      } catch (error) {
-        if (!(error instanceof CustomError) || error.statusCode !== 403) {
-          throw error;
-        }
-
-        permissoesTroca = [];
-      }
-    }
+    const allowedTypes = access.allowedTypes;
+    const tradePermissions = access.tradeApprovalPermissions;
+    const possuiPermissaoGlobalTroca = access.canApproveTrade && !Array.isArray(tradePermissions);
 
     if (filters.status === StatusSolicitacaoBrinde.AGUARDANDO_TROCA) {
-      if (userMatricula === undefined) {
+      if (!access.isMasterAdmin && !access.canApproveTrade) {
         throw new CustomError("Usuário sem permissão para visualizar solicitações em troca", 403);
       }
 
-      const aprovadorTroca = await obterAprovadorTroca(userMatricula);
       if (
+        !access.isMasterAdmin &&
         filters.tipo_requisicao
-        && Array.isArray(aprovadorTroca.tipo_requisicao)
-        && aprovadorTroca.tipo_requisicao.length > 0
-        && !aprovadorTroca.tipo_requisicao.includes(filters.tipo_requisicao as TipoRequisicao)
+        && Array.isArray(tradePermissions)
+        && tradePermissions.length > 0
+        && !tradePermissions.includes(filters.tipo_requisicao as TipoRequisicao)
       ) {
         throw new CustomError("Filtro de tipo_requisicao fora das permissões do usuário", 403);
       }
@@ -588,13 +581,23 @@ export const listarSolicitacoes = async (
 
     const query = repository.createQueryBuilder("solicitacao");
 
-    if (filters.status) {
-      query.andWhere("solicitacao.status = :status", {
-        status: filters.status,
+    if (!access.isMasterAdmin) {
+      if (!allowedTypes || allowedTypes.length === 0) {
+        throw new CustomError("Usuário sem permissão para visualizar solicitações", 403);
+      }
+
+      query.andWhere("solicitacao.tipo_requisicao IN (:...allowedTypes)", {
+        allowedTypes,
       });
-    } else if (possuiPermissaoGlobalTroca) {
-      // usuários globais de troca podem ver todos os status sem restrição adicional
-    } else if (Array.isArray(permissoesTroca) && permissoesTroca.length > 0) {
+    }
+
+    if (filters.status) {
+      query.andWhere("solicitacao.status = :status", { status: filters.status });
+    } else if (!access.isMasterAdmin && !access.canApproveTrade) {
+      query.andWhere("solicitacao.status != :statusTroca", {
+        statusTroca: StatusSolicitacaoBrinde.AGUARDANDO_TROCA,
+      });
+    } else if (!access.isMasterAdmin && Array.isArray(tradePermissions) && tradePermissions.length > 0) {
       query.andWhere(
         new Brackets((qb) => {
           qb.where("solicitacao.status != :statusTroca", {
@@ -603,12 +606,12 @@ export const listarSolicitacoes = async (
             "solicitacao.status = :statusTroca AND solicitacao.tipo_requisicao IN (:...tiposTroca)",
             {
               statusTroca: StatusSolicitacaoBrinde.AGUARDANDO_TROCA,
-              tiposTroca: permissoesTroca,
+              tiposTroca: tradePermissions,
             }
           );
         })
       );
-    } else {
+    } else if (!access.isMasterAdmin && !possuiPermissaoGlobalTroca) {
       query.andWhere("solicitacao.status != :statusTroca", {
         statusTroca: StatusSolicitacaoBrinde.AGUARDANDO_TROCA,
       });

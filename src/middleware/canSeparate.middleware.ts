@@ -1,29 +1,13 @@
 import { NextFunction, Request, Response } from "express";
-import { AppDataSource } from "../config/db";
-import { UserSeparacao } from "../models/UserSeparacao";
 import { CustomError } from "../types/CustomError";
+import { loadAuthorizationContext } from "./authorization.middleware";
 
 export const canSeparate = async (req: Request, _res: Response, next: NextFunction) => {
-  const matricula = req.user?.matricula;
+  const context = await loadAuthorizationContext(req);
 
-  if (!matricula) {
-    throw new CustomError("Usuário não autenticado", 401);
-  }
-
-  const parsed = Number(matricula);
-  if (Number.isNaN(parsed)) {
-    throw new CustomError("Matrícula do usuário autenticado inválida", 400);
-  }
-
-  const repository = AppDataSource.getRepository(UserSeparacao);
-  const userSeparacao = await repository.findOne({
-    where: { matricula: parsed },
-  });
-
-  if (!userSeparacao) {
+  if (!context.separationPermissions || context.separationPermissions.length === 0) {
     throw new CustomError("Usuário sem permissão para separação de solicitações", 403);
   }
 
-  req.separationPermissions = userSeparacao.tipo_requisicao;
   next();
 };

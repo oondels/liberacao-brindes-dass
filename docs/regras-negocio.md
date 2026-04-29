@@ -21,6 +21,39 @@ O sistema controla a concessão de brindes e calçados por meio de:
 - portaria ou operador de retirada
 - aprovador de troca
 - administrador de permissões e catálogo
+- administrador master de segurança
+
+## Controle de acesso e RBAC
+
+O sistema aplica autorização por papel operacional e escopo por `tipo_requisicao`.
+
+### Perfis
+
+- `Admin Master`
+  - identificado por `setor = automacao` no JWT
+  - possui acesso total ao sistema administrativo
+- `Admin`
+  - matrícula cadastrada em `user_admin`
+  - possui escopo limitado aos tipos cadastrados para sua matrícula
+- `Aprovador`
+  - matrícula cadastrada em `user_aprovacao`
+- `Separador`
+  - matrícula cadastrada em `user_separacao`
+- `Operador de bipagem`
+  - matrícula cadastrada em `user_bipagem`
+
+### Regras de listagem de solicitações
+
+- `GET /api/solicitacoes` exige que o usuário seja:
+  - `Admin Master`
+  - `Admin`
+  - `Aprovador`
+  - `Separador`
+- a listagem nunca retorna tipos fora do escopo da matrícula autenticada
+- um `Admin` comum usa exclusivamente o escopo de `user_admin`
+- um `Aprovador` usa o escopo de `user_aprovacao`
+- um `Separador` usa o escopo de `user_separacao`
+- solicitações em `aguardando_troca` só podem ser listadas por aprovadores com `pode_aprovar_troca = true`, ainda respeitando o filtro por tipo
 
 ## Tipos de requisição
 
@@ -240,6 +273,30 @@ O catálogo administrativo é usado para modularizar a gestão dos itens liberá
 - um item pode ser genérico ou específico por marca/modelo/gênero/calce
 - apenas itens com `ativo = true` podem ser selecionados por `brinde_id`
 - remoção administrativa de item já usado em solicitações deve resultar em inativação, preservando integridade histórica
+
+## Administração e hierarquia
+
+### `Admin Master`
+
+- pode gerenciar:
+  - `user_admin`
+  - `user_aprovacao`
+  - `user_separacao`
+  - `user_bipagem`
+  - `user_criacao_solicitacao`
+  - `brindes_ativos`
+  - dashboard
+
+### `Admin`
+
+- pode gerenciar:
+  - `user_aprovacao`
+  - `user_separacao`
+  - `user_bipagem`
+  - `user_criacao_solicitacao`
+  - `brindes_ativos`
+  - dashboard
+- não pode gerenciar `user_admin`
 
 ## Status do processo
 

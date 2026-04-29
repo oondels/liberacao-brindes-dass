@@ -158,6 +158,25 @@ Observações:
 - `tipo_requisicao` pode ficar nulo para aprovadores globais de troca
 - `pode_aprovar_troca` habilita a fila e a aprovação de solicitações em `aguardando_troca`
 
+### `user_admin`
+
+Permissões administrativas com escopo por tipo de requisição.
+
+Campos relevantes:
+
+- `id`
+- `matricula`
+- `nome`
+- `tipo_requisicao[]`
+- `created_by_matricula`
+- `created_at`
+
+Observações:
+
+- define o escopo de visibilidade e gestão do `Admin` comum
+- `Admin Master` não depende desta tabela, pois é identificado pelo `setor` do JWT
+- apenas `Admin Master` pode criar ou remover registros desta tabela
+
 ### `user_criacao_solicitacao`
 
 Permissões para abertura de solicitações.
@@ -269,3 +288,4 @@ erDiagram
 - `brindes_ativos` funciona como catálogo configurável
 - a auditoria de processo fica concentrada em `solicitacao_historico`
 - permissões operacionais e administrativas são separadas por tabela e por tipo de requisição
+- `user_admin` concentra o escopo administrativo por tipo para usuários não master

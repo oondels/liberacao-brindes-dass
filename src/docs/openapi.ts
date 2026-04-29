@@ -19,6 +19,7 @@ export const openApiSpec: OpenAPISpec = {
     { name: "Health", description: "Verificação simples da aplicação" },
     { name: "Solicitações", description: "Fluxo principal de solicitações de brinde" },
     { name: "Retiradas", description: "Bipagem e troca operacional de vouchers" },
+    { name: "Admin - Administração", description: "Gestão de administradores RBAC" },
     { name: "Admin - Aprovação", description: "Gestão de usuários aprovadores" },
     { name: "Admin - Separação", description: "Gestão de usuários da fila de separação" },
     { name: "Admin - Bipagem", description: "Gestão de usuários autorizados para bipagem" },
@@ -133,6 +134,19 @@ export const openApiSpec: OpenAPISpec = {
           },
         },
       },
+      UserAdminRequest: {
+        type: "object",
+        required: ["nome", "matricula", "tipo_requisicao"],
+        properties: {
+          nome: { type: "string" },
+          matricula: { type: "number" },
+          tipo_requisicao: {
+            type: "array",
+            items: { $ref: "#/components/schemas/TipoRequisicao" },
+            minItems: 1,
+          },
+        },
+      },
       BrindeAtivoRequest: {
         type: "object",
         required: ["nome", "tipo_requisicao"],
@@ -167,8 +181,13 @@ export const openApiSpec: OpenAPISpec = {
       get: {
         tags: ["Solicitações"],
         security: [{ cookieAuth: [] }],
-        summary: "Lista solicitações com filtros",
-        responses: { "200": { description: "Lista paginada de solicitações" } },
+        summary: "Lista solicitações com filtro por escopo RBAC",
+        description:
+          "Disponível apenas para Admin Master, Admin, aprovadores e separadores. Usuários não master veem exclusivamente os tipos autorizados para sua matrícula.",
+        responses: {
+          "200": { description: "Lista paginada de solicitações" },
+          "403": { description: "Usuário sem permissão para visualizar solicitações" },
+        },
       },
     },
     "/solicitacoes/separacao": {
@@ -275,6 +294,7 @@ export const openApiSpec: OpenAPISpec = {
         tags: ["Admin - Aprovação"],
         security: [{ cookieAuth: [] }],
         summary: "Cadastra usuário aprovador",
+        description: "Disponível para Admin Master e Admin comum.",
         requestBody: { required: true, content: jsonContent({ $ref: "#/components/schemas/UserAprovacaoRequest" }) },
         responses: { "201": { description: "Usuário aprovador criado" } },
       },
@@ -282,6 +302,7 @@ export const openApiSpec: OpenAPISpec = {
         tags: ["Admin - Aprovação"],
         security: [{ cookieAuth: [] }],
         summary: "Lista usuários aprovadores",
+        description: "Disponível para Admin Master e Admin comum.",
         responses: { "200": { description: "Lista de aprovadores" } },
       },
     },
@@ -303,11 +324,12 @@ export const openApiSpec: OpenAPISpec = {
       },
     },
     "/admin/user-separacao": {
-      get: { tags: ["Admin - Separação"], security: [{ cookieAuth: [] }], summary: "Lista usuários de separação", responses: { "200": { description: "Lista de usuários" } } },
+      get: { tags: ["Admin - Separação"], security: [{ cookieAuth: [] }], summary: "Lista usuários de separação", description: "Disponível para Admin Master e Admin comum.", responses: { "200": { description: "Lista de usuários" } } },
       post: {
         tags: ["Admin - Separação"],
         security: [{ cookieAuth: [] }],
         summary: "Cadastra usuário de separação",
+        description: "Disponível para Admin Master e Admin comum.",
         requestBody: { required: true, content: jsonContent({ $ref: "#/components/schemas/UserTiposRequest" }) },
         responses: { "201": { description: "Usuário de separação criado" } },
       },
@@ -325,11 +347,12 @@ export const openApiSpec: OpenAPISpec = {
       delete: { tags: ["Admin - Separação"], security: [{ cookieAuth: [] }], summary: "Remove usuário de separação", parameters: [{ in: "path", name: "id", required: true, schema: { type: "string", format: "uuid" } }], responses: { "200": { description: "Usuário removido" } } },
     },
     "/admin/user-bipagem": {
-      get: { tags: ["Admin - Bipagem"], security: [{ cookieAuth: [] }], summary: "Lista usuários de bipagem", responses: { "200": { description: "Lista de usuários" } } },
+      get: { tags: ["Admin - Bipagem"], security: [{ cookieAuth: [] }], summary: "Lista usuários de bipagem", description: "Disponível para Admin Master e Admin comum.", responses: { "200": { description: "Lista de usuários" } } },
       post: {
         tags: ["Admin - Bipagem"],
         security: [{ cookieAuth: [] }],
         summary: "Cadastra usuário de bipagem",
+        description: "Disponível para Admin Master e Admin comum.",
         requestBody: { required: true, content: jsonContent({ $ref: "#/components/schemas/UserTiposRequest" }) },
         responses: { "201": { description: "Usuário de bipagem criado" } },
       },
@@ -347,13 +370,58 @@ export const openApiSpec: OpenAPISpec = {
       delete: { tags: ["Admin - Bipagem"], security: [{ cookieAuth: [] }], summary: "Remove usuário de bipagem", parameters: [{ in: "path", name: "id", required: true, schema: { type: "string", format: "uuid" } }], responses: { "200": { description: "Usuário removido" } } },
     },
     "/admin/brindes": {
-      get: { tags: ["Admin - Brindes"], security: [{ cookieAuth: [] }], summary: "Lista brindes ativos", responses: { "200": { description: "Lista do catálogo" } } },
+      get: { tags: ["Admin - Brindes"], security: [{ cookieAuth: [] }], summary: "Lista brindes ativos", description: "Disponível para Admin Master e Admin comum.", responses: { "200": { description: "Lista do catálogo" } } },
       post: {
         tags: ["Admin - Brindes"],
         security: [{ cookieAuth: [] }],
         summary: "Cadastra item no catálogo de brindes ativos",
+        description: "Disponível para Admin Master e Admin comum.",
         requestBody: { required: true, content: jsonContent({ $ref: "#/components/schemas/BrindeAtivoRequest" }) },
         responses: { "201": { description: "Brinde criado" } },
+      },
+    },
+    "/admin/user-admin": {
+      get: {
+        tags: ["Admin - Administração"],
+        security: [{ cookieAuth: [] }],
+        summary: "Lista administradores cadastrados",
+        description: "Disponível exclusivamente para Admin Master.",
+        responses: { "200": { description: "Lista de administradores" } },
+      },
+      post: {
+        tags: ["Admin - Administração"],
+        security: [{ cookieAuth: [] }],
+        summary: "Cadastra administrador comum",
+        description: "Disponível exclusivamente para Admin Master.",
+        requestBody: { required: true, content: jsonContent({ $ref: "#/components/schemas/UserAdminRequest" }) },
+        responses: { "201": { description: "Administrador criado" } },
+      },
+    },
+    "/admin/user-admin/{id}": {
+      get: {
+        tags: ["Admin - Administração"],
+        security: [{ cookieAuth: [] }],
+        summary: "Obtém um administrador",
+        description: "Disponível exclusivamente para Admin Master.",
+        parameters: [{ in: "path", name: "id", required: true, schema: { type: "string", format: "uuid" } }],
+        responses: { "200": { description: "Detalhe do administrador" } },
+      },
+      put: {
+        tags: ["Admin - Administração"],
+        security: [{ cookieAuth: [] }],
+        summary: "Atualiza um administrador",
+        description: "Disponível exclusivamente para Admin Master.",
+        parameters: [{ in: "path", name: "id", required: true, schema: { type: "string", format: "uuid" } }],
+        requestBody: { required: true, content: jsonContent({ $ref: "#/components/schemas/UserAdminRequest" }) },
+        responses: { "200": { description: "Administrador atualizado" } },
+      },
+      delete: {
+        tags: ["Admin - Administração"],
+        security: [{ cookieAuth: [] }],
+        summary: "Remove um administrador",
+        description: "Disponível exclusivamente para Admin Master.",
+        parameters: [{ in: "path", name: "id", required: true, schema: { type: "string", format: "uuid" } }],
+        responses: { "200": { description: "Administrador removido" } },
       },
     },
     "/admin/brindes/{id}": {
@@ -369,11 +437,12 @@ export const openApiSpec: OpenAPISpec = {
       delete: { tags: ["Admin - Brindes"], security: [{ cookieAuth: [] }], summary: "Remove item do catálogo", parameters: [{ in: "path", name: "id", required: true, schema: { type: "string", format: "uuid" } }], responses: { "200": { description: "Brinde removido" } } },
     },
     "/user-solicitacao": {
-      get: { tags: ["Admin - Usuário Solicitação"], security: [{ cookieAuth: [] }], summary: "Lista usuários criadores", responses: { "200": { description: "Lista de usuários" } } },
+      get: { tags: ["Admin - Usuário Solicitação"], security: [{ cookieAuth: [] }], summary: "Lista usuários criadores", description: "Disponível para Admin Master e Admin comum.", responses: { "200": { description: "Lista de usuários" } } },
       post: {
         tags: ["Admin - Usuário Solicitação"],
         security: [{ cookieAuth: [] }],
         summary: "Cadastra usuário criador de solicitações",
+        description: "Disponível para Admin Master e Admin comum.",
         requestBody: { required: true, content: jsonContent({ $ref: "#/components/schemas/UserTiposRequest" }) },
         responses: { "201": { description: "Usuário criado" } },
       },
@@ -391,16 +460,16 @@ export const openApiSpec: OpenAPISpec = {
       delete: { tags: ["Admin - Usuário Solicitação"], security: [{ cookieAuth: [] }], summary: "Remove usuário criador", parameters: [{ in: "path", name: "id", required: true, schema: { type: "string", format: "uuid" } }], responses: { "200": { description: "Usuário removido" } } },
     },
     "/admin/dashboard/summary": {
-      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Resumo do dashboard", responses: { "200": { description: "Resumo consolidado" } } },
+      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Resumo do dashboard", description: "Disponível para Admin Master e Admin comum.", responses: { "200": { description: "Resumo consolidado" } } },
     },
     "/admin/dashboard/analytics": {
-      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Indicadores analíticos do dashboard", responses: { "200": { description: "Analytics" } } },
+      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Indicadores analíticos do dashboard", description: "Disponível para Admin Master e Admin comum.", responses: { "200": { description: "Analytics" } } },
     },
     "/admin/dashboard/export-solicitacoes": {
-      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Exporta solicitações com filtros", responses: { "200": { description: "Exportação das solicitações" } } },
+      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Exporta solicitações com filtros", description: "Disponível para Admin Master e Admin comum.", responses: { "200": { description: "Exportação das solicitações" } } },
     },
     "/admin/dashboard/recent-activity": {
-      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Retorna a atividade recente", responses: { "200": { description: "Atividade recente" } } },
+      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Retorna a atividade recente", description: "Disponível para Admin Master e Admin comum.", responses: { "200": { description: "Atividade recente" } } },
     },
   },
 };

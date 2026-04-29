@@ -60,7 +60,13 @@ export const getSolicitacoes = async (
     const matricula = req.user?.matricula !== undefined ? Number(req.user.matricula) : undefined;
     const result = await listarSolicitacoes(
       req.query as unknown as ListSolicitacaoQuery,
-      Number.isNaN(matricula) ? undefined : matricula
+      {
+        userMatricula: Number.isNaN(matricula) ? undefined : matricula,
+        isMasterAdmin: req.isMasterAdmin ?? false,
+        allowedTypes: req.allowedSolicitacaoTypes ?? [],
+        canApproveTrade: req.canApproveTrade ?? false,
+        tradeApprovalPermissions: req.tradeApprovalPermissions ?? null,
+      }
     );
     res.status(result.status).json(result.body);
   } catch (error) {

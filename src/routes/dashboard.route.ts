@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authenticateToken } from "../middleware/auth.middleware";
+import { isAdmin } from "../middleware/authorization.middleware";
 import { validateRequest } from "../middleware/validate.middleware";
 import {
   getAdminDashboardAnalytics,
@@ -14,20 +15,20 @@ import {
 
 const dashboardRouter = Router();
 
-dashboardRouter.get("/dashboard/summary", authenticateToken, getAdminDashboardSummary);
+dashboardRouter.use(authenticateToken, isAdmin);
 
-dashboardRouter.get("/dashboard/analytics", authenticateToken, getAdminDashboardAnalytics);
+dashboardRouter.get("/dashboard/summary", getAdminDashboardSummary);
+
+dashboardRouter.get("/dashboard/analytics", getAdminDashboardAnalytics);
 
 dashboardRouter.get(
   "/dashboard/export-solicitacoes",
-  authenticateToken,
   validateRequest("query", dashboardExportQuerySchema),
   getAdminDashboardExportSolicitacoes
 );
 
 dashboardRouter.get(
   "/dashboard/recent-activity",
-  authenticateToken,
   validateRequest("query", dashboardRecentActivityQuerySchema),
   getAdminDashboardRecentActivity
 );

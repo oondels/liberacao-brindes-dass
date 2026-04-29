@@ -10,6 +10,7 @@ O sistema atende três frentes principais:
 
 - operação de solicitações de brindes e calçados
 - gestão de permissões administrativas por tipo de requisição
+- autorização RBAC por matrícula e nível administrativo
 - gestão modular do catálogo de brindes ativos
 
 O fluxo atual suporta:
@@ -22,6 +23,7 @@ O fluxo atual suporta:
 - solicitação de troca para brindes já retirados, com reativação do voucher original
 - histórico persistido das transições da solicitação
 - catálogo administrativo de brindes ativos com vínculo opcional por `brinde_id`
+- RBAC com `Admin Master`, `Admin`, aprovador, separador e operador de bipagem
 - dashboard administrativo com resumo, analytics, exportação e atividade recente
 
 ## Stack e arquitetura
@@ -59,6 +61,27 @@ src/
 - `models` representam as tabelas e relações do banco
 - `middleware` aplica autenticação e autorização por papel ou matrícula
 - `schemas` garantem contratos de entrada e filtros com `zod`
+
+## Controle de acesso
+
+O sistema usa autenticação por JWT em cookie e autorização por RBAC.
+
+Perfis relevantes:
+
+- `Admin Master`: qualquer usuário autenticado com `setor = automacao` no JWT
+- `Admin`: matrícula cadastrada em `user_admin`
+- `Aprovador`: matrícula cadastrada em `user_aprovacao`
+- `Separador`: matrícula cadastrada em `user_separacao`
+- `Operador de bipagem`: matrícula cadastrada em `user_bipagem`
+
+Regras de visibilidade:
+
+- `GET /api/solicitacoes` não é uma listagem aberta para qualquer usuário autenticado
+- `Admin Master` vê todos os tipos e todos os status
+- `Admin` vê apenas os `tipo_requisicao` cadastrados em `user_admin`
+- `Aprovador` vê apenas os `tipo_requisicao` cadastrados em `user_aprovacao`
+- `Separador` vê apenas os `tipo_requisicao` cadastrados em `user_separacao`
+- solicitações em `aguardando_troca` só entram na listagem para aprovadores com `pode_aprovar_troca = true`, respeitando o escopo por tipo
 
 ## Fluxo operacional atual
 
@@ -191,6 +214,11 @@ Regras relevantes:
 
 ### Administração
 
+- `POST /api/admin/user-admin`
+- `GET /api/admin/user-admin`
+- `GET /api/admin/user-admin/:id`
+- `PUT /api/admin/user-admin/:id`
+- `DELETE /api/admin/user-admin/:id`
 - `POST /api/admin/user-aprovacao`
 - `GET /api/admin/user-aprovacao`
 - `GET /api/admin/user-aprovacao/:id`
@@ -215,6 +243,12 @@ Regras relevantes:
 - `GET /api/user-solicitacao/:id`
 - `PUT /api/user-solicitacao/:id`
 - `DELETE /api/user-solicitacao/:id`
+
+Escopo administrativo:
+
+- `Admin Master` pode acessar todas as rotas acima, incluindo `user-admin`
+- `Admin` pode gerenciar aprovadores, separadores, bipagem, catálogo, dashboard e `user-solicitacao`
+- `Admin` não pode criar, editar ou remover registros em `user-admin`
 
 ### Dashboard
 

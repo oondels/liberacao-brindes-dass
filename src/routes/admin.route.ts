@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authenticateToken } from "../middleware/auth.middleware";
+import { isAdmin, isMasterAdmin } from "../middleware/authorization.middleware";
 import { validateRequest } from "../middleware/validate.middleware";
 import {
   createUserAprovacaoSchema,
@@ -50,51 +51,60 @@ import {
   putUserBipagemSchema,
   userBipagemIdParamSchema,
 } from "../schemas/userBipagem.schema";
+import {
+  createUserAdminSchema,
+  listUserAdminQuerySchema,
+  putUserAdminSchema,
+  userAdminIdParamSchema,
+} from "../schemas/userAdmin.schema";
+import {
+  deleteUserAdmin,
+  getUserAdmin,
+  getUserAdminById,
+  postUserAdmin,
+  putUserAdmin,
+} from "../controllers/userAdmin.controller";
 
 const adminRouter = Router();
 
+adminRouter.use(authenticateToken, isAdmin);
+
 adminRouter.post(
   "/user-aprovacao",
-  authenticateToken,
   validateRequest("body", createUserAprovacaoSchema),
   postUserAprovacao
 );
 
-adminRouter.get("/user-aprovacao", authenticateToken, getUserAprovacao);
+adminRouter.get("/user-aprovacao", getUserAprovacao);
 
-adminRouter.get("/user-aprovacao/:id", authenticateToken, getUserAprovacaoById);
+adminRouter.get("/user-aprovacao/:id", getUserAprovacaoById);
 
 adminRouter.patch(
   "/user-aprovacao/:id",
-  authenticateToken,
   validateRequest("body", patchUserAprovacaoSchema),
   patchUserAprovacao
 );
 
 adminRouter.post(
   "/user-separacao",
-  authenticateToken,
   validateRequest("body", createUserSeparacaoSchema),
   postUserSeparacao
 );
 
 adminRouter.get(
   "/user-separacao",
-  authenticateToken,
   validateRequest("query", listUserSeparacaoQuerySchema),
   getUserSeparacao
 );
 
 adminRouter.get(
   "/user-separacao/:id",
-  authenticateToken,
   validateRequest("params", userSeparacaoIdParamSchema),
   getUserSeparacaoById
 );
 
 adminRouter.put(
   "/user-separacao/:id",
-  authenticateToken,
   validateRequest("params", userSeparacaoIdParamSchema),
   validateRequest("body", putUserSeparacaoSchema),
   putUserSeparacao
@@ -102,35 +112,30 @@ adminRouter.put(
 
 adminRouter.delete(
   "/user-separacao/:id",
-  authenticateToken,
   validateRequest("params", userSeparacaoIdParamSchema),
   deleteUserSeparacao
 );
 
 adminRouter.post(
   "/user-bipagem",
-  authenticateToken,
   validateRequest("body", createUserBipagemSchema),
   postUserBipagem
 );
 
 adminRouter.get(
   "/user-bipagem",
-  authenticateToken,
   validateRequest("query", listUserBipagemQuerySchema),
   getUserBipagem
 );
 
 adminRouter.get(
   "/user-bipagem/:id",
-  authenticateToken,
   validateRequest("params", userBipagemIdParamSchema),
   getUserBipagemById
 );
 
 adminRouter.put(
   "/user-bipagem/:id",
-  authenticateToken,
   validateRequest("params", userBipagemIdParamSchema),
   validateRequest("body", putUserBipagemSchema),
   putUserBipagem
@@ -138,35 +143,30 @@ adminRouter.put(
 
 adminRouter.delete(
   "/user-bipagem/:id",
-  authenticateToken,
   validateRequest("params", userBipagemIdParamSchema),
   deleteUserBipagem
 );
 
 adminRouter.post(
   "/brindes",
-  authenticateToken,
   validateRequest("body", createBrindeAtivoSchema),
   postBrindeAtivo
 );
 
 adminRouter.get(
   "/brindes",
-  authenticateToken,
   validateRequest("query", listBrindeAtivoQuerySchema),
   getBrindesAtivos
 );
 
 adminRouter.get(
   "/brindes/:id",
-  authenticateToken,
   validateRequest("params", brindeAtivoIdParamSchema),
   getBrindeAtivoById
 );
 
 adminRouter.put(
   "/brindes/:id",
-  authenticateToken,
   validateRequest("params", brindeAtivoIdParamSchema),
   validateRequest("body", putBrindeAtivoSchema),
   putBrindeAtivo
@@ -174,9 +174,44 @@ adminRouter.put(
 
 adminRouter.delete(
   "/brindes/:id",
-  authenticateToken,
   validateRequest("params", brindeAtivoIdParamSchema),
   deleteBrindeAtivo
+);
+
+adminRouter.post(
+  "/user-admin",
+  isMasterAdmin,
+  validateRequest("body", createUserAdminSchema),
+  postUserAdmin
+);
+
+adminRouter.get(
+  "/user-admin",
+  isMasterAdmin,
+  validateRequest("query", listUserAdminQuerySchema),
+  getUserAdmin
+);
+
+adminRouter.get(
+  "/user-admin/:id",
+  isMasterAdmin,
+  validateRequest("params", userAdminIdParamSchema),
+  getUserAdminById
+);
+
+adminRouter.put(
+  "/user-admin/:id",
+  isMasterAdmin,
+  validateRequest("params", userAdminIdParamSchema),
+  validateRequest("body", putUserAdminSchema),
+  putUserAdmin
+);
+
+adminRouter.delete(
+  "/user-admin/:id",
+  isMasterAdmin,
+  validateRequest("params", userAdminIdParamSchema),
+  deleteUserAdmin
 );
 
 export default adminRouter;

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authenticateToken } from "../middleware/auth.middleware";
+import { isAdmin } from "../middleware/authorization.middleware";
 import { validateRequest } from "../middleware/validate.middleware";
 import {
   createUserSolicitacaoSchema,
@@ -17,7 +18,7 @@ import {
 
 const userSolicitacaoRouter = Router();
 
-userSolicitacaoRouter.use(authenticateToken);
+userSolicitacaoRouter.use(authenticateToken, isAdmin);
 
 userSolicitacaoRouter.post(
   "/user-solicitacao",

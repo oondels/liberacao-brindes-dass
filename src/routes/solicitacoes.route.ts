@@ -21,6 +21,7 @@ import {
   separarSolicitacaoSchema,
 } from "../schemas/solicitacao.schema";
 import { authenticateToken } from "../middleware/auth.middleware";
+import { authorizeSolicitacaoView } from "../middleware/authorization.middleware";
 import { createSolicitation } from "../middleware/createSolicitation.middleware";
 import { isManager } from "../middleware/manager.middleware";
 import { canSeparate } from "../middleware/canSeparate.middleware";
@@ -55,6 +56,7 @@ solicitacoesRouter.get(
 solicitacoesRouter.get(
   "/solicitacoes",
   authenticateToken,
+  authorizeSolicitacaoView,
   validateRequest("query", listSolicitacaoQuerySchema),
   getSolicitacoes
 );

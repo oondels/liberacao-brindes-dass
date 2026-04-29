@@ -39,6 +39,13 @@ Lista solicitações com filtros por:
 - intervalo de datas
 - página
 
+Regras de acesso:
+
+- disponível apenas para `Admin Master`, `Admin`, `Aprovador` e `Separador`
+- `Admin Master` vê todos os tipos
+- os demais perfis veem exclusivamente os `tipo_requisicao` do seu cadastro
+- status `aguardando_troca` só aparece para aprovadores com `pode_aprovar_troca = true`
+
 ### `GET /api/solicitacoes/:id`
 
 Retorna detalhe da solicitação com:
@@ -92,6 +99,20 @@ Recebe um `codigo_voucher` já resgatado e move a solicitação para `aguardando
 
 ## Administração
 
+### Administradores
+
+- `POST /api/admin/user-admin`
+- `GET /api/admin/user-admin`
+- `GET /api/admin/user-admin/:id`
+- `PUT /api/admin/user-admin/:id`
+- `DELETE /api/admin/user-admin/:id`
+
+Observações:
+
+- acesso exclusivo de `Admin Master`
+- `Admin Master` é determinado por `setor = automacao` no JWT
+- `Admin` comum é controlado por `user_admin`
+
 ### Aprovadores
 
 - `POST /api/admin/user-aprovacao`
@@ -136,9 +157,17 @@ Observações:
 - `PUT /api/user-solicitacao/:id`
 - `DELETE /api/user-solicitacao/:id`
 
+Observações:
+
+- acesso permitido para `Admin Master` e `Admin`
+
 ## Dashboard
 
 - `GET /api/admin/dashboard/summary`
 - `GET /api/admin/dashboard/analytics`
 - `GET /api/admin/dashboard/export-solicitacoes`
 - `GET /api/admin/dashboard/recent-activity`
+
+Observações:
+
+- acesso permitido para `Admin Master` e `Admin`
