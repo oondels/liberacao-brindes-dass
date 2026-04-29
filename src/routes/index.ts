@@ -4,9 +4,11 @@ import solicitacoesRouter from "./solicitacoes.route";
 import adminRouter from "./admin.route";
 import userSolicitacaoRouter from "./userSolicitacao.route";
 import dashboardRouter from "./dashboard.route";
+import docsRouter from "./docs.route";
 
 const apiRouter = Router();
 
+apiRouter.use(docsRouter);
 apiRouter.use(solicitacoesRouter);
 apiRouter.use(retiradasRouter);
 apiRouter.use("/admin", adminRouter);

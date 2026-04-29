@@ -2,6 +2,8 @@
 
 API backend em `Node.js`, `TypeScript`, `Express`, `TypeORM` e `Zod` para gestão do fluxo de solicitação, aprovação, separação, troca, voucher, retirada e catálogo de brindes da DASS.
 
+Swagger disponível em `GET /api/docs` e especificação OpenAPI em `GET /api/openapi.json`.
+
 ## Visão geral
 
 O sistema atende três frentes principais:
@@ -163,6 +165,11 @@ Regras relevantes:
 
 ## Rotas principais
 
+### Documentação
+
+- `GET /api/docs`
+- `GET /api/openapi.json`
+
 ### Solicitações
 
 - `POST /api/solicitacoes`
@@ -290,6 +297,7 @@ npm run dev
 - [Regras de negócio](docs/regras-negocio.md)
 - [Mapeamento de banco](docs/banco-de-dados.md)
 - [Inventário de endpoints](docs/endpoints.md)
+- Swagger UI: `/api/docs`
 
 O servidor sobe em:
 

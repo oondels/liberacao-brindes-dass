@@ -6,6 +6,8 @@ Resumo objetivo das rotas disponíveis na aplicação.
 
 - prefixo principal: `/api`
 - autenticação: cookie `token`
+- documentação Swagger UI: `GET /api/docs`
+- especificação OpenAPI JSON: `GET /api/openapi.json`
 
 ## Solicitações
 
