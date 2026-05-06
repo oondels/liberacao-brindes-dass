@@ -44,6 +44,7 @@ Regras de acesso:
 - disponível apenas para `Admin Master`, `Admin`, `Aprovador` e `Separador`
 - `Admin Master` vê todos os tipos
 - os demais perfis veem exclusivamente os `tipo_requisicao` do seu cadastro
+- `Separador` sem outro perfil vê somente solicitações em `aguardando_separacao`
 - status `aguardando_troca` só aparece para aprovadores com `pode_aprovar_troca = true`
 
 ### `GET /solicitacoes/:id`

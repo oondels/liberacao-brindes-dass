@@ -52,7 +52,7 @@ O sistema aplica autorização por papel operacional e escopo por `tipo_requisic
 - a listagem nunca retorna tipos fora do escopo da matrícula autenticada
 - um `Admin` comum usa exclusivamente o escopo de `user_admin`
 - um `Aprovador` usa o escopo de `user_aprovacao`
-- um `Separador` usa o escopo de `user_separacao`
+- um `Separador` sem outro perfil usa o escopo de `user_separacao` e só visualiza solicitações em `aguardando_separacao`
 - solicitações em `aguardando_troca` só podem ser listadas por aprovadores com `pode_aprovar_troca = true`, ainda respeitando o filtro por tipo
 
 ## Tipos de requisição

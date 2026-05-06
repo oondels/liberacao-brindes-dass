@@ -58,6 +58,13 @@ export const getSolicitacoes = async (
 ): Promise<void> => {
   try {
     const matricula = req.user?.matricula !== undefined ? Number(req.user.matricula) : undefined;
+    const isPureSeparator =
+      !(req.isMasterAdmin ?? false)
+      && !(req.isAdmin ?? false)
+      && !(req.canApproveTrade ?? false)
+      && (req.approvalPermissions ?? []).length === 0
+      && (req.separationPermissions ?? []).length > 0;
+
     const result = await listarSolicitacoes(
       req.query as unknown as ListSolicitacaoQuery,
       {
@@ -66,6 +73,7 @@ export const getSolicitacoes = async (
         allowedTypes: req.allowedSolicitacaoTypes ?? [],
         canApproveTrade: req.canApproveTrade ?? false,
         tradeApprovalPermissions: req.tradeApprovalPermissions ?? null,
+        restrictToSeparationStatus: isPureSeparator,
       }
     );
     res.status(result.status).json(result.body);

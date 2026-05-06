@@ -80,7 +80,7 @@ Regras de visibilidade:
 - `Admin Master` vê todos os tipos e todos os status
 - `Admin` vê apenas os `tipo_requisicao` cadastrados em `user_admin`
 - `Aprovador` vê apenas os `tipo_requisicao` cadastrados em `user_aprovacao`
-- `Separador` vê apenas os `tipo_requisicao` cadastrados em `user_separacao`
+- `Separador` sem outro perfil vê apenas solicitações em `aguardando_separacao` dos `tipo_requisicao` cadastrados em `user_separacao`
 - solicitações em `aguardando_troca` só entram na listagem para aprovadores com `pode_aprovar_troca = true`, respeitando o escopo por tipo
 
 ## Fluxo operacional atual

@@ -551,6 +551,7 @@ export const listarSolicitacoes = async (
     allowedTypes: TipoRequisicao[] | null;
     canApproveTrade: boolean;
     tradeApprovalPermissions: TipoRequisicao[] | null;
+    restrictToSeparationStatus?: boolean;
   }
 ): Promise<ServiceResult<SolicitacaoResponse>> => {
   const pageSize = 20;
@@ -562,6 +563,14 @@ export const listarSolicitacoes = async (
     const allowedTypes = access.allowedTypes;
     const tradePermissions = access.tradeApprovalPermissions;
     const possuiPermissaoGlobalTroca = access.canApproveTrade && !Array.isArray(tradePermissions);
+
+    if (
+      access.restrictToSeparationStatus
+      && filters.status
+      && filters.status !== StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO
+    ) {
+      throw new CustomError("Filtro de status fora das permissões do usuário", 403);
+    }
 
     if (filters.status === StatusSolicitacaoBrinde.AGUARDANDO_TROCA) {
       if (!access.isMasterAdmin && !access.canApproveTrade) {
@@ -591,7 +600,11 @@ export const listarSolicitacoes = async (
       });
     }
 
-    if (filters.status) {
+    if (access.restrictToSeparationStatus) {
+      query.andWhere("solicitacao.status = :statusSeparacao", {
+        statusSeparacao: StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO,
+      });
+    } else if (filters.status) {
       query.andWhere("solicitacao.status = :status", { status: filters.status });
     } else if (!access.isMasterAdmin && !access.canApproveTrade) {
       query.andWhere("solicitacao.status != :statusTroca", {
