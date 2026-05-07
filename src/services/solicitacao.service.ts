@@ -691,7 +691,8 @@ export const listarSolicitacoes = async (
     if (error instanceof CustomError) {
       throw error;
     }
-
+    console.log(error);
+    
     throw new CustomError("Erro ao listar solicitacoes", 500);
   }
 };

@@ -82,6 +82,7 @@ Regras de visibilidade:
 - `Aprovador` vê apenas os `tipo_requisicao` cadastrados em `user_aprovacao`
 - `Separador` sem outro perfil vê apenas solicitações em `aguardando_separacao` dos `tipo_requisicao` cadastrados em `user_separacao`
 - solicitações em `aguardando_troca` só entram na listagem para aprovadores com `pode_aprovar_troca = true`, respeitando o escopo por tipo
+- `GET /user/permissoes` consolida esses escopos para visibilidade do frontend, sem substituir a autorização das rotas de ação
 
 ## Fluxo operacional atual
 
@@ -196,6 +197,12 @@ Regras relevantes:
 - `GET /`
 - `GET /docs`
 - `GET /openapi.json`
+
+### Usuário autenticado
+
+- `GET /user/permissoes`
+
+Retorna flags de permissão e escopos por `tipo_requisicao` para orientar a exibição das telas do módulo.
 
 ### Solicitações
 

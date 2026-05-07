@@ -304,6 +304,20 @@ O catálogo administrativo é usado para modularizar a gestão dos itens liberá
   - dashboard
 - não pode gerenciar `user_admin`
 
+## Permissões para visibilidade do frontend
+
+`GET /user/permissoes` retorna uma visão agregada das permissões do usuário autenticado.
+
+A rota:
+
+- exige autenticação por cookie `token`
+- usa a matrícula do JWT como chave de consulta
+- agrega permissões de criação, bipagem, aprovação, separação e administração
+- informa flags como `canCreateSolicitacao`, `canBiparVoucher`, `canViewSolicitacoes`, `canViewDashboard` e `canManageAdminUsers`
+- retorna os escopos por `tipo_requisicao` no campo `tipos`
+
+Essa resposta deve ser usada para exibir ou ocultar atalhos no frontend. Ela não substitui a autorização final aplicada pelas rotas de criação, aprovação, separação, bipagem, listagem e administração.
+
 ## Status do processo
 
 ### Solicitação
