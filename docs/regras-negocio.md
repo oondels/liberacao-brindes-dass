@@ -63,6 +63,7 @@ O sistema aplica autorização por papel operacional e escopo por `tipo_requisic
 - `campanha`
 - `falta_zero`
 - `sandalia`
+- `doacao`
 
 ## Subgrupos de campanha
 
@@ -79,6 +80,7 @@ O sistema aplica autorização por papel operacional e escopo por `tipo_requisic
 - `subgrupo_campanha`
 - `genero`
 - `num_calce`
+- `categoria_infantil`
 - `marca`
 - `modelo`
 - `brinde_id`
@@ -96,6 +98,7 @@ O sistema aplica autorização por papel operacional e escopo por `tipo_requisic
 - `num_calce` deve estar entre `10` e `60`
 - `genero` é obrigatório em novas solicitações
 - `brinde_id` é opcional
+- `categoria_infantil` é opcional e assume `false` quando não informado
 
 ### Regras por tipo
 
@@ -113,6 +116,9 @@ O sistema aplica autorização por papel operacional e escopo por `tipo_requisic
 - `sandalia`
   - `genero` obrigatório
   - `num_calce` obrigatório
+  - `marca` e `modelo` opcionais na criação
+- `doacao`
+  - segue o fluxo padrão de aprovação, separação, voucher e retirada
   - `marca` e `modelo` opcionais na criação
 
 ### Catálogo de brindes
@@ -241,7 +247,7 @@ O sistema aplica autorização por papel operacional e escopo por `tipo_requisic
 - o voucher volta para `ativo = true`
 - `teste_calce` volta para `aprovado`
 - os demais tipos voltam para `aguardando_separacao`
-- `sandalia`, `campanha` com `brinde_5s`, `genero`, `num_calce`, `brinde_id`, `marca` e `modelo` são preservados
+- `sandalia`, `doacao`, `campanha` com `brinde_5s`, `genero`, `num_calce`, `categoria_infantil`, `brinde_id`, `marca` e `modelo` são preservados
 
 ## Regras de cancelamento
 

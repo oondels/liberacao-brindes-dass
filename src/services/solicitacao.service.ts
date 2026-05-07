@@ -105,6 +105,7 @@ export type SolicitacaoSeparacaoListItem = {
   marca: string | null;
   modelo: string | null;
   num_calce: number;
+  categoria_infantil: boolean;
   status: StatusSolicitacaoBrinde;
   created_at: Date;
   data_aprovado: Date | null;
@@ -516,6 +517,7 @@ export const criarSolicitacao = async (
         modelo: snapshot.modelo ?? undefined,
         genero,
         num_calce: numCalce,
+        categoria_infantil: input.categoria_infantil ?? false,
         status: StatusSolicitacaoBrinde.PENDENTE_APROVACAO,
       });
 
@@ -530,6 +532,7 @@ export const criarSolicitacao = async (
         metadata: {
           brinde_id: persisted.brinde_id ?? null,
           genero: persisted.genero ?? null,
+          categoria_infantil: persisted.categoria_infantil,
         },
       });
 
@@ -740,6 +743,7 @@ export const listarSolicitacoesSeparacao = async (
     marca: item.marca ?? null,
     modelo: item.modelo ?? null,
     num_calce: item.num_calce,
+    categoria_infantil: item.categoria_infantil,
     status: item.status,
     created_at: item.created_at,
     data_aprovado: item.data_aprovado ?? null,
@@ -808,6 +812,7 @@ export const listarSolicitacoesTroca = async (
     marca: item.marca ?? null,
     modelo: item.modelo ?? null,
     num_calce: item.num_calce,
+    categoria_infantil: item.categoria_infantil,
     status: item.status,
     created_at: item.created_at,
     data_aprovado: item.data_aprovado ?? null,
@@ -1091,6 +1096,7 @@ export const aprovarTrocaSolicitacao = async (
         retorno_para: statusNovo,
         brinde_id: solicitacao.brinde_id ?? null,
         genero: solicitacao.genero ?? null,
+        categoria_infantil: solicitacao.categoria_infantil,
         subgrupo_campanha: solicitacao.subgrupo_campanha ?? null,
       },
     });

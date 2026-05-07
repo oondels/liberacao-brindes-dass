@@ -22,6 +22,7 @@ Campos de destaque:
 - `subgrupo_campanha`
 - `genero`
 - `num_calce`
+- `categoria_infantil`
 - `brinde_id`
 - `marca`
 - `modelo`

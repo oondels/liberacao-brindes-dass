@@ -20,7 +20,8 @@ export enum TipoRequisicao {
   PENS_EAJA = 'pense_aja',
   CAMPANHA = 'campanha',
   FALTA_ZERO = 'falta_zero',
-  SANDALIA = 'sandalia'
+  SANDALIA = 'sandalia',
+  DOACAO = 'doacao'
 }
 
 export enum SubgrupoCampanha {
@@ -116,6 +117,9 @@ export class SolicitacaoBrinde {
 
   @Column({ type: 'int2' })
   num_calce!: number;
+
+  @Column({ type: 'bool', default: false })
+  categoria_infantil!: boolean;
 
   @Column({ type: 'bool', default: false, nullable: true })
   entregue?: boolean;

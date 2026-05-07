@@ -40,7 +40,7 @@ export const openApiSpec: OpenAPISpec = {
     schemas: {
       TipoRequisicao: {
         type: "string",
-        enum: ["teste_calce", "brinde_interno", "pense_aja", "campanha", "falta_zero", "sandalia"],
+        enum: ["teste_calce", "brinde_interno", "pense_aja", "campanha", "falta_zero", "sandalia", "doacao"],
       },
       SubgrupoCampanha: {
         type: "string",
@@ -80,6 +80,7 @@ export const openApiSpec: OpenAPISpec = {
           modelo: { type: "string", nullable: true },
           genero: { $ref: "#/components/schemas/GeneroSolicitacao" },
           num_calce: { type: "string" },
+          categoria_infantil: { type: "boolean", default: false },
         },
       },
       SolicitacaoUpdateBrindeRequest: {
@@ -137,6 +138,7 @@ export const openApiSpec: OpenAPISpec = {
                       tipo_requisicao: { $ref: "#/components/schemas/TipoRequisicao" },
                       subgrupo_campanha: { $ref: "#/components/schemas/SubgrupoCampanha" },
                       genero: { $ref: "#/components/schemas/GeneroSolicitacao" },
+                      categoria_infantil: { type: "boolean" },
                       marca: { type: "string", nullable: true },
                       modelo: { type: "string", nullable: true },
                       num_calce: { type: "number" },

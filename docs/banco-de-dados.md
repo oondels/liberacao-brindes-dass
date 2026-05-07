@@ -29,6 +29,7 @@ Campos relevantes:
 - `modelo`
 - `genero`
 - `num_calce`
+- `categoria_infantil`
 - `entregue`
 - `entregue_por`
 - `data_entregue`
@@ -50,6 +51,7 @@ Observações:
 
 - guarda snapshot operacional do brinde final
 - `brinde_id` é opcional
+- `categoria_infantil` identifica solicitações de brinde infantil e usa `false` como padrão
 - `marca` e `modelo` podem permanecer vazios até aprovação ou separação, dependendo do tipo
 
 ### `vounchers`
@@ -218,7 +220,7 @@ Campos relevantes:
 Observações:
 
 - não deve receber `teste_calce` como permissão
-- suporta `sandalia` e demais tipos que passam pela separação
+- suporta `sandalia`, `doacao` e demais tipos que passam pela separação
 
 ### `user_bipagem`
 

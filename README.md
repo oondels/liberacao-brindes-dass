@@ -97,6 +97,8 @@ Regras relevantes:
 - `num_calce` é obrigatório
 - `marca` e `modelo` são obrigatórios apenas para `teste_calce`
 - `sandalia` é um `tipo_requisicao` próprio
+- `doacao` é um `tipo_requisicao` próprio e segue o fluxo com separação
+- `categoria_infantil` marca solicitações de brinde infantil e assume `false` quando não informado
 - `brinde_5s` é tratado como `subgrupo_campanha` de `campanha`
 - `brinde_id` pode ser informado para vincular a solicitação ao catálogo de brindes ativos
 
@@ -162,6 +164,7 @@ Regras relevantes:
 - `campanha`
 - `falta_zero`
 - `sandalia`
+- `doacao`
 
 ### Subgrupos de campanha
 
