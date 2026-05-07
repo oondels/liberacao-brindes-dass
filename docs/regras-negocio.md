@@ -342,12 +342,12 @@ flowchart TD
     C -- Não --> X1[Ação bloqueada]
     C -- Sim --> D{Tipo = teste_calce?}
 
-    D -- Sim --> E[Aprovação]
+    D -- Sim --> E[Aprovar teste_calce]
     E --> F[Status: aprovado]
-    F --> G[Gerar voucher imediato]
+    F --> G[Gerar voucher imediato sem separação]
     G --> H[Disponível para retirada]
 
-    D -- Não --> I[Aprovação]
+    D -- Não --> I[Aprovar demais tipos]
     I --> J[Status: aguardando_separacao]
     J --> K{Separador autorizado?}
 
@@ -355,8 +355,11 @@ flowchart TD
     K -- Sim --> L[Definir brinde por catalogo ou override]
     L --> M[Confirmar separação]
     M --> N[Status: aprovado]
-    N --> O[Gerar voucher]
-    O --> H
+    N --> O{É troca?}
+    O -- Não --> O1[Gerar voucher]
+    O -- Sim --> O2[Reativar voucher original]
+    O1 --> H
+    O2 --> H
 
     H --> P{Voucher válido e ativo?}
     P -- Não --> X3[Retirada negada]
@@ -369,8 +372,9 @@ flowchart TD
     W -- Não --> X4[Ação bloqueada]
     W -- Sim --> Y{Tipo = teste_calce?}
     Y -- Sim --> Z[Reativar voucher]
-    Z --> F
-    Y -- Não --> AA[Reativar voucher]
+    Z --> AB[Status: aprovado]
+    AB --> H
+    Y -- Não --> AA[Status: aguardando_separacao]
     AA --> J
 
     B --> S[Cancelar]
