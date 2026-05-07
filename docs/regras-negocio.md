@@ -63,6 +63,7 @@ O sistema aplica autorização por papel operacional e escopo por `tipo_requisic
 - `campanha`
 - `falta_zero`
 - `sandalia`
+- `doacao`
 
 ## Subgrupos de campanha
 
@@ -79,6 +80,7 @@ O sistema aplica autorização por papel operacional e escopo por `tipo_requisic
 - `subgrupo_campanha`
 - `genero`
 - `num_calce`
+- `categoria_infantil`
 - `marca`
 - `modelo`
 - `brinde_id`
@@ -96,6 +98,7 @@ O sistema aplica autorização por papel operacional e escopo por `tipo_requisic
 - `num_calce` deve estar entre `10` e `60`
 - `genero` é obrigatório em novas solicitações
 - `brinde_id` é opcional
+- `categoria_infantil` é opcional e assume `false` quando não informado
 
 ### Regras por tipo
 
@@ -113,6 +116,9 @@ O sistema aplica autorização por papel operacional e escopo por `tipo_requisic
 - `sandalia`
   - `genero` obrigatório
   - `num_calce` obrigatório
+  - `marca` e `modelo` opcionais na criação
+- `doacao`
+  - segue o fluxo padrão de aprovação, separação, voucher e retirada
   - `marca` e `modelo` opcionais na criação
 
 ### Catálogo de brindes
@@ -241,7 +247,7 @@ O sistema aplica autorização por papel operacional e escopo por `tipo_requisic
 - o voucher volta para `ativo = true`
 - `teste_calce` volta para `aprovado`
 - os demais tipos voltam para `aguardando_separacao`
-- `sandalia`, `campanha` com `brinde_5s`, `genero`, `num_calce`, `brinde_id`, `marca` e `modelo` são preservados
+- `sandalia`, `doacao`, `campanha` com `brinde_5s`, `genero`, `num_calce`, `categoria_infantil`, `brinde_id`, `marca` e `modelo` são preservados
 
 ## Regras de cancelamento
 
@@ -297,6 +303,20 @@ O catálogo administrativo é usado para modularizar a gestão dos itens liberá
   - `brindes_ativos`
   - dashboard
 - não pode gerenciar `user_admin`
+
+## Permissões para visibilidade do frontend
+
+`GET /user/permissoes` retorna uma visão agregada das permissões do usuário autenticado.
+
+A rota:
+
+- exige autenticação por cookie `token`
+- usa a matrícula do JWT como chave de consulta
+- agrega permissões de criação, bipagem, aprovação, separação e administração
+- informa flags como `canCreateSolicitacao`, `canBiparVoucher`, `canViewSolicitacoes`, `canViewDashboard` e `canManageAdminUsers`
+- retorna os escopos por `tipo_requisicao` no campo `tipos`
+
+Essa resposta deve ser usada para exibir ou ocultar atalhos no frontend. Ela não substitui a autorização final aplicada pelas rotas de criação, aprovação, separação, bipagem, listagem e administração.
 
 ## Status do processo
 

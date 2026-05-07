@@ -10,6 +10,36 @@ Resumo objetivo das rotas disponíveis na aplicação.
 - documentação Swagger UI: `GET /docs`
 - especificação OpenAPI JSON: `GET /openapi.json`
 
+## Usuário autenticado
+
+### `GET /user/permissoes`
+
+Retorna as permissões agregadas do usuário autenticado para orientar a visibilidade de telas no frontend.
+
+Campos principais:
+
+- `isAdmin`
+- `isMasterAdmin`
+- `canCreateSolicitacao`
+- `canBiparVoucher`
+- `canApprove`
+- `canSeparate`
+- `canApproveTrade`
+- `canViewSolicitacoes`
+- `canManageAprovacao`
+- `canManageSolicitacaoUsers`
+- `canManageBipagemUsers`
+- `canManageSeparacaoUsers`
+- `canManageAdminUsers`
+- `canViewDashboard`
+- `tipos`
+
+Observações:
+
+- a rota exige autenticação por cookie `token`
+- a resposta agrega permissões de `user_criacao_solicitacao`, `user_bipagem`, `user_aprovacao`, `user_separacao` e `user_admin`
+- a autorização final continua sendo validada nas rotas operacionais e administrativas específicas
+
 ## Solicitações
 
 ### `POST /solicitacoes`
@@ -22,6 +52,7 @@ Campos de destaque:
 - `subgrupo_campanha`
 - `genero`
 - `num_calce`
+- `categoria_infantil`
 - `brinde_id`
 - `marca`
 - `modelo`

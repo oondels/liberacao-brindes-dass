@@ -41,6 +41,7 @@ type VoucherRetiradaPreview = {
       marca: string | null;
       modelo: string | null;
       num_calce: number;
+      categoria_infantil: boolean;
     };
     aprovador: {
       matricula: number | null;
@@ -142,6 +143,7 @@ export const buscarVoucherParaRetirada = async (
             marca: voucher.solicitacao.marca ?? null,
             modelo: voucher.solicitacao.modelo ?? null,
             num_calce: voucher.solicitacao.num_calce,
+            categoria_infantil: voucher.solicitacao.categoria_infantil,
           },
           aprovador: {
             matricula: voucher.solicitacao.gerente_aprovacao ?? null,

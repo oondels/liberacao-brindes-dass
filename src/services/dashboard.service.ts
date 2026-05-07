@@ -201,6 +201,7 @@ export const getDashboardRecentActivity = async (
       tipo_requisicao: solicitacao.tipo_requisicao,
       subgrupo_campanha: solicitacao.subgrupo_campanha ?? null,
       genero: solicitacao.genero ?? null,
+      categoria_infantil: solicitacao.categoria_infantil,
       marca: solicitacao.marca ?? null,
       modelo: solicitacao.modelo ?? null,
       status: solicitacao.status,
@@ -256,6 +257,7 @@ export const getDashboardExportSolicitacoes = async (
     .addSelect("s.tipo_requisicao", "tipo_requisicao")
     .addSelect("s.subgrupo_campanha", "subgrupo_campanha")
     .addSelect("s.genero", "genero")
+    .addSelect("s.categoria_infantil", "categoria_infantil")
     .addSelect("s.marca", "marca")
     .addSelect("s.modelo", "modelo")
     .addSelect("s.num_calce", "num_calce")
@@ -283,6 +285,7 @@ export const getDashboardExportSolicitacoes = async (
       tipo_requisicao: TipoRequisicao;
       subgrupo_campanha: SubgrupoCampanha | null;
       genero: GeneroSolicitacao | null;
+      categoria_infantil: boolean;
       marca: string | null;
       modelo: string | null;
       num_calce: string | number;
@@ -316,6 +319,7 @@ export const getDashboardExportSolicitacoes = async (
         tipo_requisicao: row.tipo_requisicao,
         subgrupo_campanha: row.subgrupo_campanha,
         genero: row.genero,
+        categoria_infantil: row.categoria_infantil,
         marca: row.marca,
         modelo: row.modelo,
         num_calce: Number(row.num_calce),

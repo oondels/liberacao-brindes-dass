@@ -7,6 +7,7 @@ const tipoRequisicaoValues = [
   "campanha",
   "falta_zero",
   "sandalia",
+  "doacao",
 ] as const;
 
 const tipoRequisicaoSeparacaoValues = [
@@ -15,6 +16,7 @@ const tipoRequisicaoSeparacaoValues = [
   "campanha",
   "falta_zero",
   "sandalia",
+  "doacao",
 ] as const;
 
 const subgrupoCampanhaValues = [
@@ -57,6 +59,7 @@ export const createSolicitacaoSchema = z
     marca: optionalNonEmptyTrimmedString("Marca obrigatoria"),
     modelo: optionalNonEmptyTrimmedString("Modelo obrigatorio"),
     num_calce: numericString,
+    categoria_infantil: z.boolean().optional().default(false),
     rfid: numericString.optional(),
     codbarras: numericString.optional(),
   })

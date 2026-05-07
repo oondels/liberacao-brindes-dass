@@ -82,6 +82,7 @@ Regras de visibilidade:
 - `Aprovador` vê apenas os `tipo_requisicao` cadastrados em `user_aprovacao`
 - `Separador` sem outro perfil vê apenas solicitações em `aguardando_separacao` dos `tipo_requisicao` cadastrados em `user_separacao`
 - solicitações em `aguardando_troca` só entram na listagem para aprovadores com `pode_aprovar_troca = true`, respeitando o escopo por tipo
+- `GET /user/permissoes` consolida esses escopos para visibilidade do frontend, sem substituir a autorização das rotas de ação
 
 ## Fluxo operacional atual
 
@@ -97,6 +98,8 @@ Regras relevantes:
 - `num_calce` é obrigatório
 - `marca` e `modelo` são obrigatórios apenas para `teste_calce`
 - `sandalia` é um `tipo_requisicao` próprio
+- `doacao` é um `tipo_requisicao` próprio e segue o fluxo com separação
+- `categoria_infantil` marca solicitações de brinde infantil e assume `false` quando não informado
 - `brinde_5s` é tratado como `subgrupo_campanha` de `campanha`
 - `brinde_id` pode ser informado para vincular a solicitação ao catálogo de brindes ativos
 
@@ -162,6 +165,7 @@ Regras relevantes:
 - `campanha`
 - `falta_zero`
 - `sandalia`
+- `doacao`
 
 ### Subgrupos de campanha
 
@@ -193,6 +197,12 @@ Regras relevantes:
 - `GET /`
 - `GET /docs`
 - `GET /openapi.json`
+
+### Usuário autenticado
+
+- `GET /user/permissoes`
+
+Retorna flags de permissão e escopos por `tipo_requisicao` para orientar a exibição das telas do módulo.
 
 ### Solicitações
 

@@ -17,6 +17,7 @@ export const openApiSpec: OpenAPISpec = {
   servers: [{ url: "/", description: "Base relativa da API" }],
   tags: [
     { name: "Health", description: "Verificação simples da aplicação" },
+    { name: "Usuário", description: "Permissões do usuário autenticado" },
     { name: "Solicitações", description: "Fluxo principal de solicitações de brinde" },
     { name: "Retiradas", description: "Bipagem e troca operacional de vouchers" },
     { name: "Admin - Administração", description: "Gestão de administradores RBAC" },
@@ -40,7 +41,7 @@ export const openApiSpec: OpenAPISpec = {
     schemas: {
       TipoRequisicao: {
         type: "string",
-        enum: ["teste_calce", "brinde_interno", "pense_aja", "campanha", "falta_zero", "sandalia"],
+        enum: ["teste_calce", "brinde_interno", "pense_aja", "campanha", "falta_zero", "sandalia", "doacao"],
       },
       SubgrupoCampanha: {
         type: "string",
@@ -80,6 +81,7 @@ export const openApiSpec: OpenAPISpec = {
           modelo: { type: "string", nullable: true },
           genero: { $ref: "#/components/schemas/GeneroSolicitacao" },
           num_calce: { type: "string" },
+          categoria_infantil: { type: "boolean", default: false },
         },
       },
       SolicitacaoUpdateBrindeRequest: {
@@ -137,6 +139,7 @@ export const openApiSpec: OpenAPISpec = {
                       tipo_requisicao: { $ref: "#/components/schemas/TipoRequisicao" },
                       subgrupo_campanha: { $ref: "#/components/schemas/SubgrupoCampanha" },
                       genero: { $ref: "#/components/schemas/GeneroSolicitacao" },
+                      categoria_infantil: { type: "boolean" },
                       marca: { type: "string", nullable: true },
                       modelo: { type: "string", nullable: true },
                       num_calce: { type: "number" },
@@ -198,6 +201,48 @@ export const openApiSpec: OpenAPISpec = {
           },
         },
       },
+      UserPermissoesTipos: {
+        type: "object",
+        properties: {
+          criacao: { type: "array", items: { $ref: "#/components/schemas/TipoRequisicao" } },
+          bipagem: { type: "array", items: { $ref: "#/components/schemas/TipoRequisicao" } },
+          aprovacao: { type: "array", items: { $ref: "#/components/schemas/TipoRequisicao" } },
+          separacao: { type: "array", items: { $ref: "#/components/schemas/TipoRequisicao" } },
+          admin: { type: "array", items: { $ref: "#/components/schemas/TipoRequisicao" } },
+          visualizacao: {
+            type: "array",
+            items: { $ref: "#/components/schemas/TipoRequisicao" },
+            nullable: true,
+            description: "Lista de tipos que o usuário pode visualizar. `null` indica Admin Master com visão global.",
+          },
+          aprovacaoTroca: {
+            type: "array",
+            items: { $ref: "#/components/schemas/TipoRequisicao" },
+            nullable: true,
+            description: "Tipos permitidos para aprovação de troca. `null` pode indicar ausência de escopo específico.",
+          },
+        },
+      },
+      UserPermissoesResponse: {
+        type: "object",
+        properties: {
+          isAdmin: { type: "boolean" },
+          isMasterAdmin: { type: "boolean" },
+          canCreateSolicitacao: { type: "boolean" },
+          canBiparVoucher: { type: "boolean" },
+          canApprove: { type: "boolean" },
+          canSeparate: { type: "boolean" },
+          canApproveTrade: { type: "boolean" },
+          canViewSolicitacoes: { type: "boolean" },
+          canManageAprovacao: { type: "boolean" },
+          canManageSolicitacaoUsers: { type: "boolean" },
+          canManageBipagemUsers: { type: "boolean" },
+          canManageSeparacaoUsers: { type: "boolean" },
+          canManageAdminUsers: { type: "boolean" },
+          canViewDashboard: { type: "boolean" },
+          tipos: { $ref: "#/components/schemas/UserPermissoesTipos" },
+        },
+      },
       BrindeAtivoRequest: {
         type: "object",
         required: ["nome", "tipo_requisicao"],
@@ -227,6 +272,22 @@ export const openApiSpec: OpenAPISpec = {
     },
     "/openapi.json": {
       get: { tags: ["Docs"], summary: "Retorna a especificação OpenAPI em JSON", responses: { "200": { description: "Especificação OpenAPI" } } },
+    },
+    "/user/permissoes": {
+      get: {
+        tags: ["Usuário"],
+        security: [{ cookieAuth: [] }],
+        summary: "Retorna permissões do usuário autenticado",
+        description:
+          "Agrega permissões administrativas e operacionais por matrícula para orientar a visibilidade do frontend. A autorização final das ações continua sendo aplicada nas rotas específicas.",
+        responses: {
+          "200": {
+            description: "Permissões e escopos por tipo de requisição",
+            content: jsonContent({ $ref: "#/components/schemas/UserPermissoesResponse" }),
+          },
+          "401": { description: "Usuário não autenticado" },
+        },
+      },
     },
     "/solicitacoes": {
       post: {

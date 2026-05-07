@@ -44,6 +44,7 @@ export interface DashboardRecentActivityItemDTO {
   tipo_requisicao: TipoRequisicao;
   subgrupo_campanha: SubgrupoCampanha | null;
   genero: GeneroSolicitacao | null;
+  categoria_infantil: boolean;
   marca: string | null;
   modelo: string | null;
   status: StatusSolicitacaoBrinde;
@@ -81,6 +82,7 @@ export interface DashboardExportSolicitacaoItemDTO {
   tipo_requisicao: TipoRequisicao;
   subgrupo_campanha: SubgrupoCampanha | null;
   genero: GeneroSolicitacao | null;
+  categoria_infantil: boolean;
   marca: string | null;
   modelo: string | null;
   num_calce: number;
