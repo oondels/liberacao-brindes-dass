@@ -255,7 +255,15 @@ export const postSolicitacaoCancelar = async (
   try {
     const id = req.params.id as string;
     const { motivo } = req.body;
-    const result = await cancelarSolicitacao(id, motivo);
+    const usuarioCancelamento = req.user?.matricula !== undefined
+      ? Number(req.user.matricula)
+      : undefined;
+
+    if (usuarioCancelamento !== undefined && Number.isNaN(usuarioCancelamento)) {
+      throw new CustomError("Matrícula do usuário autenticado inválida", 400);
+    }
+
+    const result = await cancelarSolicitacao(id, motivo, usuarioCancelamento);
     res.status(result.status).json(result.body);
   } catch (error) {
     next(error);

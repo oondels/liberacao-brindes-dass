@@ -12,7 +12,7 @@ const envSchema = z.object({
   DB_PORT: z.coerce.number().int().positive().default(5432),
   DB_USER: z.string().default('postgres'),
   DB_PASSWORD: z.string().default('postgres'),
-  DB_NAME: z.string().default('sports_highlights'),
+  DB_NAME: z.string().default('liberacao_brinde'),
 
   PORT: z.coerce.number().int().positive().default(3000),
 
@@ -67,4 +67,3 @@ export const config = {
     apiKey: env.NOTIFICATION_API_KEY
   }
 }
-

@@ -190,6 +190,7 @@ Regras relevantes:
 
 ### Documentação
 
+- `GET /`
 - `GET /docs`
 - `GET /openapi.json`
 
@@ -350,7 +351,7 @@ npm run build
 
 ### 7. Executar em ambiente compilado
 
-Hoje o `script` `start` do `package.json` aponta para `dist/index.ts`. Se for executar em produção por JavaScript compilado, o alvo correto gerado pelo `tsc` é `dist/index.js`.
+O `script` `start` executa o JavaScript compilado em `dist/index.js`.
 
 ## Scripts disponíveis
 
@@ -368,12 +369,12 @@ npm run migration:generate
 - criação de solicitação controlada por `user_criacao_solicitacao`
 - aprovação controlada por `user_aprovacao`
 - separação controlada por `user_separacao`
-- retirada controlada por cargo/setor autorizado
+- retirada controlada por cadastro em `user_bipagem`
 - validações de payload e query centralizadas com `zod`
 
 ## Banco de dados
 
-O `DataSource` principal está em [src/config/db.ts](/home/oendel/code/dass/liberacao_tenis_dass/src/config/db.ts:1).
+O `DataSource` principal está em [src/config/db.ts](src/config/db.ts).
 
 Entidades operacionais principais:
 
@@ -399,5 +400,5 @@ Mapeamento detalhado das tabelas:
 
 - `GET /retiradas` ainda é apenas um endpoint de preview
 - não há suíte automatizada de testes no repositório
-- o CORS está configurado estaticamente em [src/index.ts](/home/oendel/code/dass/liberacao_tenis_dass/src/index.ts:1)
+- o CORS está configurado estaticamente em [src/index.ts](src/index.ts)
 - o fluxo usa catálogo de brindes, mas não controla saldo de estoque; o cadastro representa itens ativos disponíveis, não inventário quantitativo

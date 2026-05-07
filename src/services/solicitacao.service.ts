@@ -1166,7 +1166,8 @@ export const rejeitarSolicitacao = async (
 
 export const cancelarSolicitacao = async (
   id: string,
-  motivo: string
+  motivo: string,
+  usuarioCancelamento?: number
 ): Promise<ServiceResult<SolicitacaoResponse>> => {
   const queryRunner = AppDataSource.createQueryRunner();
   await queryRunner.connect();
@@ -1193,8 +1194,9 @@ export const cancelarSolicitacao = async (
     }
 
     const statusAnterior = solicitacao.status;
+    const updatedBy = usuarioCancelamento ?? solicitacao.updated_by ?? solicitacao.usuario_criador;
     solicitacao.status = StatusSolicitacaoBrinde.CANCELADO;
-    solicitacao.updated_by = solicitacao.updated_by ?? solicitacao.usuario_criador;
+    solicitacao.updated_by = updatedBy;
     solicitacao.updated_at = new Date();
     await queryRunner.manager.save(SolicitacaoBrinde, solicitacao);
 
@@ -1209,7 +1211,7 @@ export const cancelarSolicitacao = async (
       status_anterior: statusAnterior,
       status_novo: solicitacao.status,
       acao: AcaoSolicitacaoHistorico.CANCELAMENTO,
-      usuario_matricula: solicitacao.updated_by ?? solicitacao.usuario_criador,
+      usuario_matricula: updatedBy,
       marca_nova: solicitacao.marca ?? null,
       modelo_novo: solicitacao.modelo ?? null,
       metadata: {

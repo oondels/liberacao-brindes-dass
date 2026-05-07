@@ -266,6 +266,8 @@ export const solicitarTroca = async (
 
   try {
     await AppDataSource.transaction(async (manager) => {
+      const statusAnterior = voucher.solicitacao.status;
+
       voucher.solicitacao.entregue = false;
       voucher.solicitacao.entregue_por = undefined;
       voucher.solicitacao.data_entregue = undefined;
@@ -277,7 +279,7 @@ export const solicitarTroca = async (
 
       const historico = manager.create(SolicitacaoHistorico, {
         solicitacao_id: voucher.solicitacao.id,
-        status_anterior: voucher.solicitacao.status,
+        status_anterior: statusAnterior,
         status_novo: StatusSolicitacaoBrinde.AGUARDANDO_TROCA,
         acao: AcaoSolicitacaoHistorico.SOLICITACAO_TROCA,
         usuario_matricula: Number(input.matricula),

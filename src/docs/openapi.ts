@@ -215,6 +215,13 @@ export const openApiSpec: OpenAPISpec = {
     },
   },
   paths: {
+    "/": {
+      get: {
+        tags: ["Health"],
+        summary: "Verifica se a aplicação está em execução",
+        responses: { "200": { description: "Mensagem simples de saúde da aplicação" } },
+      },
+    },
     "/docs": {
       get: { tags: ["Docs"], summary: "Abre a interface Swagger UI", responses: { "200": { description: "HTML da documentação Swagger" } } },
     },
