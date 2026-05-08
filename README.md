@@ -274,7 +274,7 @@ Escopo administrativo:
 - `GET /admin/dashboard/export-solicitacoes`
 - `GET /admin/dashboard/recent-activity`
 
-O dashboard também pode ser visto por aprovadores e por usuários com criação de `teste_calce`; perfis não master recebem dados filtrados pelo próprio escopo.
+O dashboard pode ser visto por qualquer usuário com ao menos uma permissão cadastrada; os dados retornados são globais.
 
 ## Configuração do ambiente
 

@@ -334,7 +334,7 @@ A rota:
 - informa flags como `canCreateSolicitacao`, `canBiparVoucher`, `canViewSolicitacoes`, `canViewDashboard` e `canManageAdminUsers`
 - retorna os escopos por `tipo_requisicao` no campo `tipos`
 - libera listagem para usuários com permissão de criação, dentro dos próprios tipos
-- libera dashboard para Admins, aprovadores e criadores de `teste_calce`; perfis não master recebem dados filtrados pelo próprio escopo
+- libera dashboard para qualquer usuário com ao menos uma permissão cadastrada; os dados retornados são globais
 
 Essa resposta deve ser usada para exibir ou ocultar atalhos no frontend. Ela não substitui a autorização final aplicada pelas rotas de criação, aprovação, separação, bipagem, listagem e administração.
 

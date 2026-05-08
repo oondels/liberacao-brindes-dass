@@ -619,16 +619,16 @@ export const openApiSpec: OpenAPISpec = {
       delete: { tags: ["Admin - Usuário Solicitação"], security: [{ cookieAuth: [] }], summary: "Remove usuário criador", parameters: [{ in: "path", name: "id", required: true, schema: { type: "string", format: "uuid" } }], responses: { "200": { description: "Usuário removido" } } },
     },
     "/admin/dashboard/summary": {
-      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Resumo do dashboard", description: "Disponível para Admin Master, Admin comum, aprovadores e usuários com criação de teste_calce. Perfis não master recebem dados filtrados por escopo.", responses: { "200": { description: "Resumo consolidado" } } },
+      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Resumo do dashboard", description: "Disponível para qualquer usuário com ao menos uma permissão cadastrada. Os dados retornados são globais.", responses: { "200": { description: "Resumo consolidado" } } },
     },
     "/admin/dashboard/analytics": {
-      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Indicadores analíticos do dashboard", description: "Disponível para Admin Master, Admin comum, aprovadores e usuários com criação de teste_calce. Perfis não master recebem dados filtrados por escopo.", responses: { "200": { description: "Analytics" } } },
+      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Indicadores analíticos do dashboard", description: "Disponível para qualquer usuário com ao menos uma permissão cadastrada. Os dados retornados são globais.", responses: { "200": { description: "Analytics" } } },
     },
     "/admin/dashboard/export-solicitacoes": {
-      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Exporta solicitações com filtros", description: "Disponível para Admin Master, Admin comum, aprovadores e usuários com criação de teste_calce. Perfis não master recebem dados filtrados por escopo.", responses: { "200": { description: "Exportação das solicitações" } } },
+      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Exporta solicitações com filtros", description: "Disponível para qualquer usuário com ao menos uma permissão cadastrada. Os dados retornados são globais.", responses: { "200": { description: "Exportação das solicitações" } } },
     },
     "/admin/dashboard/recent-activity": {
-      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Retorna a atividade recente", description: "Disponível para Admin Master, Admin comum, aprovadores e usuários com criação de teste_calce. Perfis não master recebem dados filtrados por escopo.", responses: { "200": { description: "Atividade recente" } } },
+      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Retorna a atividade recente", description: "Disponível para qualquer usuário com ao menos uma permissão cadastrada. Os dados retornados são globais.", responses: { "200": { description: "Atividade recente" } } },
     },
   },
 };

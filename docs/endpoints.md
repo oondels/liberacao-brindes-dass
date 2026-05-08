@@ -213,8 +213,8 @@ Observações:
 
 Observações:
 
-- acesso permitido para `Admin Master`, `Admin`, aprovadores e usuários com criação de `teste_calce`
-- perfis não master recebem dados filtrados por escopo de tipos
+- acesso permitido para qualquer usuário com ao menos uma permissão cadastrada
+- os dados retornados são globais
 
 ## Dashboard
 

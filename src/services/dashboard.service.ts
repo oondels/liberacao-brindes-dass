@@ -39,8 +39,8 @@ const applyDashboardScope = <T extends ObjectLiteral>(
     dashboardStatusInvalidado: StatusSolicitacaoBrinde.INVALIDADO,
   });
 
-  if (!access.isMasterAdmin) {
-    if (!access.allowedTypes || access.allowedTypes.length === 0) {
+  if (!access.isMasterAdmin && access.allowedTypes !== null) {
+    if (access.allowedTypes.length === 0) {
       query.andWhere("1 = 0");
       return query;
     }

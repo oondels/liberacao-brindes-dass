@@ -18,7 +18,7 @@ export const getAdminDashboardSummary = async (
   try {
     const result = await getDashboardSummary({
       isMasterAdmin: req.isMasterAdmin ?? false,
-      allowedTypes: req.dashboardPermissions ?? [],
+      allowedTypes: req.dashboardPermissions ?? null,
     });
     res.status(result.status).json(result.body);
   } catch (error) {
@@ -34,7 +34,7 @@ export const getAdminDashboardAnalytics = async (
   try {
     const result = await getDashboardAnalytics({
       isMasterAdmin: req.isMasterAdmin ?? false,
-      allowedTypes: req.dashboardPermissions ?? [],
+      allowedTypes: req.dashboardPermissions ?? null,
     });
     res.status(result.status).json(result.body);
   } catch (error) {
@@ -52,7 +52,7 @@ export const getAdminDashboardRecentActivity = async (
       req.query as unknown as DashboardRecentActivityQueryInput,
       {
         isMasterAdmin: req.isMasterAdmin ?? false,
-        allowedTypes: req.dashboardPermissions ?? [],
+        allowedTypes: req.dashboardPermissions ?? null,
       }
     );
     res.status(result.status).json(result.body);
@@ -71,7 +71,7 @@ export const getAdminDashboardExportSolicitacoes = async (
       req.query as unknown as DashboardExportQueryInput,
       {
         isMasterAdmin: req.isMasterAdmin ?? false,
-        allowedTypes: req.dashboardPermissions ?? [],
+        allowedTypes: req.dashboardPermissions ?? null,
       }
     );
     res.status(result.status).json(result.body);
