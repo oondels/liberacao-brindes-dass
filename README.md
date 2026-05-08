@@ -96,7 +96,7 @@ Regras relevantes:
 - o `tipo_requisicao` precisa estar no escopo de permissão do usuário
 - `genero` é obrigatório em novas solicitações
 - `num_calce` é obrigatório
-- `marca` e `modelo` são obrigatórios apenas para `teste_calce`
+- `marca` e `modelo` são obrigatórios para `teste_calce` e `gratificacao`
 - `sandalia` é um `tipo_requisicao` próprio
 - `doacao` é um `tipo_requisicao` próprio e segue o fluxo com separação
 - `categoria_infantil` marca solicitações de brinde infantil e assume `false` quando não informado
@@ -112,7 +112,8 @@ Regras relevantes:
 - exige autenticação e middleware `isManager`
 - a matrícula também precisa existir em `user_aprovacao`
 - a aprovação é limitada por `tipo_requisicao`
-- `teste_calce` continua gerando voucher imediatamente
+- `teste_calce` e `gratificacao` geram voucher imediatamente
+- `gratificacao` exige `bonificacao_user_liberacao` na aprovação
 - os demais tipos seguem para `aguardando_separacao`
 - para `campanha` e `falta_zero`, a definição do brinde pode ser concluída na aprovação
 
@@ -126,7 +127,7 @@ Regras relevantes:
 - a solicitação precisa estar em `aguardando_separacao`
 - o operador pode confirmar o brinde por `brinde_id` do catálogo, por override manual de `marca/modelo`, ou usando os dados já presentes
 - ao final da separação, `marca` e `modelo` precisam estar resolvidos
-- o voucher é gerado nessa etapa para todos os tipos que não sejam `teste_calce`
+- o voucher é gerado nessa etapa para todos os tipos que não sejam `teste_calce` ou `gratificacao`
 
 ### 4. Retirada
 
@@ -160,6 +161,7 @@ Regras relevantes:
 ### Tipos de requisição
 
 - `teste_calce`
+- `gratificacao`
 - `brinde_interno`
 - `pense_aja`
 - `campanha`
@@ -183,12 +185,14 @@ Regras relevantes:
 - `rejeitado`
 - `retirado`
 - `cancelado`
+- `invalidado`
 
 ### Status do voucher
 
 - `pendente`
 - `resgatado`
 - `cancelado`
+- `invalidado`
 
 ## Rotas principais
 
@@ -216,6 +220,7 @@ Retorna flags de permissão e escopos por `tipo_requisicao` para orientar a exib
 - `POST /solicitacoes/:id/rejeitar`
 - `POST /solicitacoes/:id/separar`
 - `POST /solicitacoes/:id/cancelar`
+- `POST /solicitacoes/:id/invalidar-voucher`
 
 ### Retiradas
 
@@ -268,6 +273,8 @@ Escopo administrativo:
 - `GET /admin/dashboard/analytics`
 - `GET /admin/dashboard/export-solicitacoes`
 - `GET /admin/dashboard/recent-activity`
+
+O dashboard também pode ser visto por aprovadores e por usuários com criação de `teste_calce`; perfis não master recebem dados filtrados pelo próprio escopo.
 
 ## Configuração do ambiente
 

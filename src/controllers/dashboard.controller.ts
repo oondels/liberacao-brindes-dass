@@ -11,12 +11,15 @@ import {
 } from "../services/dashboard.service";
 
 export const getAdminDashboardSummary = async (
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const result = await getDashboardSummary();
+    const result = await getDashboardSummary({
+      isMasterAdmin: req.isMasterAdmin ?? false,
+      allowedTypes: req.dashboardPermissions ?? [],
+    });
     res.status(result.status).json(result.body);
   } catch (error) {
     next(error);
@@ -24,12 +27,15 @@ export const getAdminDashboardSummary = async (
 };
 
 export const getAdminDashboardAnalytics = async (
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const result = await getDashboardAnalytics();
+    const result = await getDashboardAnalytics({
+      isMasterAdmin: req.isMasterAdmin ?? false,
+      allowedTypes: req.dashboardPermissions ?? [],
+    });
     res.status(result.status).json(result.body);
   } catch (error) {
     next(error);
@@ -43,7 +49,11 @@ export const getAdminDashboardRecentActivity = async (
 ): Promise<void> => {
   try {
     const result = await getDashboardRecentActivity(
-      req.query as unknown as DashboardRecentActivityQueryInput
+      req.query as unknown as DashboardRecentActivityQueryInput,
+      {
+        isMasterAdmin: req.isMasterAdmin ?? false,
+        allowedTypes: req.dashboardPermissions ?? [],
+      }
     );
     res.status(result.status).json(result.body);
   } catch (error) {
@@ -58,7 +68,11 @@ export const getAdminDashboardExportSolicitacoes = async (
 ): Promise<void> => {
   try {
     const result = await getDashboardExportSolicitacoes(
-      req.query as unknown as DashboardExportQueryInput
+      req.query as unknown as DashboardExportQueryInput,
+      {
+        isMasterAdmin: req.isMasterAdmin ?? false,
+        allowedTypes: req.dashboardPermissions ?? [],
+      }
     );
     res.status(result.status).json(result.body);
   } catch (error) {

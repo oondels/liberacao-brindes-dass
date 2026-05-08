@@ -7,6 +7,7 @@ import {
   postSolicitacaoAprovar,
   postSolicitacaoAprovarTroca,
   postSolicitacaoCancelar,
+  postSolicitacaoInvalidarVoucher,
   postSolicitacaoRejeitar,
   postSolicitacaoSeparar,
   postSolicitacoes,
@@ -16,6 +17,7 @@ import {
   aprovarSolicitacaoSchema,
   cancelSolicitacaoSchema,
   createSolicitacaoSchema,
+  invalidarVoucherSchema,
   listSolicitacaoSeparacaoQuerySchema,
   listSolicitacaoQuerySchema,
   separarSolicitacaoSchema,
@@ -92,6 +94,13 @@ solicitacoesRouter.post(
   authenticateToken,
   validateRequest("body", cancelSolicitacaoSchema),
   postSolicitacaoCancelar
+);
+
+solicitacoesRouter.post(
+  "/solicitacoes/:id/invalidar-voucher",
+  authenticateToken,
+  validateRequest("body", invalidarVoucherSchema),
+  postSolicitacaoInvalidarVoucher
 );
 
 export default solicitacoesRouter;

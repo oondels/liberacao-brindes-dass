@@ -25,6 +25,12 @@ import { ServiceResult } from "../types/service";
 
 const repository = AppDataSource.getRepository(SolicitacaoBrinde);
 const tiposComBrindeDefinidoNaAprovacao = [TipoRequisicao.CAMPANHA, TipoRequisicao.FALTA_ZERO];
+const tiposComVoucherGeradoNaAprovacao = [TipoRequisicao.TESTE_CALCE, TipoRequisicao.GRATIFICACAO];
+
+type InvalidarVoucherAccess = {
+  isMasterAdmin: boolean;
+  allowedTypes: TipoRequisicao[] | null;
+};
 
 type VoucherDTO = {
   id: string;
@@ -321,6 +327,22 @@ const verificarPermissaoSeparacao = async (
   return userSeparacao;
 };
 
+const verificarPermissaoInvalidacaoVoucher = (
+  access: InvalidarVoucherAccess,
+  tipoRequisicao: TipoRequisicao
+): void => {
+  if (access.isMasterAdmin) {
+    return;
+  }
+
+  if (!access.allowedTypes || !access.allowedTypes.includes(tipoRequisicao)) {
+    throw new CustomError(
+      `Usuário sem permissão para invalidar vouchers do tipo '${tipoRequisicao}'`,
+      403
+    );
+  }
+};
+
 const registrarHistorico = async (
   manager: EntityManager,
   input: {
@@ -498,8 +520,8 @@ export const criarSolicitacao = async (
         inputModelo: input.modelo,
       });
 
-      if (tipoRequisicao === TipoRequisicao.TESTE_CALCE && (!snapshot.marca || !snapshot.modelo)) {
-        throw new CustomError("Marca e modelo são obrigatórios para solicitações de teste_calce", 400);
+      if (tiposComVoucherGeradoNaAprovacao.includes(tipoRequisicao) && (!snapshot.marca || !snapshot.modelo)) {
+        throw new CustomError("Marca e modelo são obrigatórios para solicitações de teste_calce ou gratificacao", 400);
       }
 
       const solicitacao = manager.create(SolicitacaoBrinde, {
@@ -879,9 +901,18 @@ export const aprovarSolicitacao = async (
     });
 
     const tipoDefineBrindeNaAprovacao = tiposComBrindeDefinidoNaAprovacao.includes(solicitacao.tipo_requisicao);
-    const precisaBrindeFinalAgora = tipoDefineBrindeNaAprovacao || solicitacao.tipo_requisicao === TipoRequisicao.TESTE_CALCE;
+    const precisaBrindeFinalAgora =
+      tipoDefineBrindeNaAprovacao
+      || tiposComVoucherGeradoNaAprovacao.includes(solicitacao.tipo_requisicao);
     if (precisaBrindeFinalAgora && (!snapshot.marca || !snapshot.modelo)) {
       throw new CustomError("A solicitação precisa de marca e modelo definidos para aprovação", 400);
+    }
+
+    if (
+      solicitacao.tipo_requisicao === TipoRequisicao.GRATIFICACAO
+      && input.bonificacao_user_liberacao === undefined
+    ) {
+      throw new CustomError("Matrícula de liberação da bonificação é obrigatória para gratificação", 400);
     }
 
     const statusAnterior = solicitacao.status;
@@ -892,11 +923,14 @@ export const aprovarSolicitacao = async (
     solicitacao.marca = snapshot.marca ?? undefined;
     solicitacao.modelo = snapshot.modelo ?? undefined;
     solicitacao.gerente_aprovacao = user_aprovador;
+    solicitacao.bonificacao_user_liberacao = solicitacao.tipo_requisicao === TipoRequisicao.GRATIFICACAO
+      ? input.bonificacao_user_liberacao
+      : solicitacao.bonificacao_user_liberacao;
     solicitacao.updated_by = user_aprovador;
     solicitacao.data_aprovado = updateDate;
     solicitacao.updated_at = updateDate;
 
-    if (solicitacao.tipo_requisicao === TipoRequisicao.TESTE_CALCE) {
+    if (tiposComVoucherGeradoNaAprovacao.includes(solicitacao.tipo_requisicao)) {
       solicitacao.status = StatusSolicitacaoBrinde.APROVADO;
       await queryRunner.manager.save(SolicitacaoBrinde, solicitacao);
       await criarVoucherParaSolicitacao(queryRunner.manager, solicitacao);
@@ -911,6 +945,7 @@ export const aprovarSolicitacao = async (
         metadata: {
           brinde_anterior_id: brindeAnteriorId,
           brinde_novo_id: solicitacao.brinde_id ?? null,
+          bonificacao_user_liberacao: solicitacao.bonificacao_user_liberacao ?? null,
         },
       });
     } else {
@@ -1063,7 +1098,7 @@ export const aprovarTrocaSolicitacao = async (
     }
 
     const statusAnterior = solicitacao.status;
-    const statusNovo = solicitacao.tipo_requisicao === TipoRequisicao.TESTE_CALCE
+    const statusNovo = tiposComVoucherGeradoNaAprovacao.includes(solicitacao.tipo_requisicao)
       ? StatusSolicitacaoBrinde.APROVADO
       : StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO;
     const now = new Date();
@@ -1233,6 +1268,83 @@ export const cancelarSolicitacao = async (
     await queryRunner.rollbackTransaction();
     if (error instanceof CustomError) throw error;
     throw new CustomError("Erro ao cancelar solicitação", 500);
+  } finally {
+    await queryRunner.release();
+  }
+};
+
+export const invalidarVoucherSolicitacao = async (
+  id: string,
+  motivo: string,
+  usuarioInvalidacao: number,
+  access: InvalidarVoucherAccess
+): Promise<ServiceResult<SolicitacaoResponse>> => {
+  const queryRunner = AppDataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
+  try {
+    const solicitacao = await queryRunner.manager.findOne(SolicitacaoBrinde, {
+      where: { id },
+      relations: ["voucher"],
+    });
+
+    if (!solicitacao) {
+      throw new CustomError("Solicitação não encontrada", 404);
+    }
+
+    verificarPermissaoInvalidacaoVoucher(access, solicitacao.tipo_requisicao);
+
+    if (solicitacao.status !== StatusSolicitacaoBrinde.APROVADO) {
+      throw new CustomError("Voucher só pode ser invalidado para solicitação aprovada", 400);
+    }
+
+    if (!solicitacao.voucher) {
+      throw new CustomError("Solicitação sem voucher vinculado", 409);
+    }
+
+    if (!solicitacao.voucher.ativo || solicitacao.voucher.status !== StatusSVouncher.PENDENTE) {
+      throw new CustomError("Voucher não está pendente e ativo para invalidação", 409);
+    }
+
+    const statusAnterior = solicitacao.status;
+    const now = new Date();
+
+    solicitacao.status = StatusSolicitacaoBrinde.INVALIDADO;
+    solicitacao.updated_by = usuarioInvalidacao;
+    solicitacao.updated_at = now;
+
+    solicitacao.voucher.status = StatusSVouncher.INVALIDADO;
+    solicitacao.voucher.ativo = false;
+    solicitacao.voucher.updated_at = now;
+
+    await queryRunner.manager.save(VoucherSolicitacao, solicitacao.voucher);
+    await queryRunner.manager.save(SolicitacaoBrinde, solicitacao);
+
+    await registrarHistorico(queryRunner.manager, {
+      solicitacao,
+      status_anterior: statusAnterior,
+      status_novo: solicitacao.status,
+      acao: AcaoSolicitacaoHistorico.INVALIDACAO_VOUCHER,
+      usuario_matricula: usuarioInvalidacao,
+      marca_nova: solicitacao.marca ?? null,
+      modelo_novo: solicitacao.modelo ?? null,
+      metadata: {
+        motivo,
+        voucher_id: solicitacao.voucher.id,
+        codigo_voucher: solicitacao.voucher.codigo_voucher,
+        brinde_id: solicitacao.brinde_id ?? null,
+      },
+    });
+
+    await queryRunner.commitTransaction();
+
+    const solicitacaoAtualizada = await carregarSolicitacaoDetalhe(id);
+    return { status: 200, body: { data: solicitacaoAtualizada } };
+  } catch (error) {
+    await queryRunner.rollbackTransaction();
+    if (error instanceof CustomError) throw error;
+    throw new CustomError("Erro ao invalidar voucher", 500);
   } finally {
     await queryRunner.release();
   }

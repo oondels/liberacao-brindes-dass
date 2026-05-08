@@ -41,7 +41,7 @@ export const openApiSpec: OpenAPISpec = {
     schemas: {
       TipoRequisicao: {
         type: "string",
-        enum: ["teste_calce", "brinde_interno", "pense_aja", "campanha", "falta_zero", "sandalia", "doacao"],
+        enum: ["teste_calce", "gratificacao", "brinde_interno", "pense_aja", "campanha", "falta_zero", "sandalia", "doacao"],
       },
       SubgrupoCampanha: {
         type: "string",
@@ -62,6 +62,7 @@ export const openApiSpec: OpenAPISpec = {
           "rejeitado",
           "retirado",
           "cancelado",
+          "invalidado",
         ],
       },
       SolicitacaoCreateRequest: {
@@ -90,6 +91,14 @@ export const openApiSpec: OpenAPISpec = {
           brinde_id: { type: "string", format: "uuid", nullable: true },
           marca: { type: "string", nullable: true },
           modelo: { type: "string", nullable: true },
+          bonificacao_user_liberacao: { type: "number", nullable: true },
+        },
+      },
+      InvalidarVoucherRequest: {
+        type: "object",
+        required: ["motivo"],
+        properties: {
+          motivo: { type: "string" },
         },
       },
       CancelarSolicitacaoRequest: {
@@ -114,7 +123,7 @@ export const openApiSpec: OpenAPISpec = {
             properties: {
               id: { type: "string", format: "uuid" },
               codigo_voucher: { type: "string" },
-              status: { type: "string", enum: ["pendente", "resgatado", "cancelado"] },
+              status: { type: "string", enum: ["pendente", "resgatado", "cancelado", "invalidado"] },
               ativo: { type: "boolean" },
               data_resgate: { type: "string", format: "date-time", nullable: true },
               created_at: { type: "string", format: "date-time" },
@@ -302,7 +311,7 @@ export const openApiSpec: OpenAPISpec = {
         security: [{ cookieAuth: [] }],
         summary: "Lista solicitações com filtro por escopo RBAC",
         description:
-          "Disponível apenas para Admin Master, Admin, aprovadores e separadores. Usuários não master veem exclusivamente os tipos autorizados para sua matrícula.",
+          "Disponível para Admin Master, Admin, aprovadores, separadores e usuários com permissão de criação. Usuários não master veem exclusivamente os tipos autorizados para sua matrícula.",
         responses: {
           "200": { description: "Lista paginada de solicitações" },
           "403": { description: "Usuário sem permissão para visualizar solicitações" },
@@ -380,6 +389,21 @@ export const openApiSpec: OpenAPISpec = {
         parameters: [{ in: "path", name: "id", required: true, schema: { type: "string", format: "uuid" } }],
         requestBody: { required: true, content: jsonContent({ $ref: "#/components/schemas/CancelarSolicitacaoRequest" }) },
         responses: { "200": { description: "Solicitação cancelada" } },
+      },
+    },
+    "/solicitacoes/{id}/invalidar-voucher": {
+      post: {
+        tags: ["Solicitações"],
+        security: [{ cookieAuth: [] }],
+        summary: "Invalida um voucher aprovado e ainda pendente",
+        parameters: [{ in: "path", name: "id", required: true, schema: { type: "string", format: "uuid" } }],
+        requestBody: { required: true, content: jsonContent({ $ref: "#/components/schemas/InvalidarVoucherRequest" }) },
+        responses: {
+          "200": { description: "Voucher invalidado" },
+          "400": { description: "Solicitação não está aprovada ou justificativa ausente" },
+          "403": { description: "Usuário sem permissão para invalidar voucher desse tipo" },
+          "409": { description: "Voucher inexistente ou não pendente/ativo" },
+        },
       },
     },
     "/retiradas": {
@@ -595,16 +619,16 @@ export const openApiSpec: OpenAPISpec = {
       delete: { tags: ["Admin - Usuário Solicitação"], security: [{ cookieAuth: [] }], summary: "Remove usuário criador", parameters: [{ in: "path", name: "id", required: true, schema: { type: "string", format: "uuid" } }], responses: { "200": { description: "Usuário removido" } } },
     },
     "/admin/dashboard/summary": {
-      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Resumo do dashboard", description: "Disponível para Admin Master e Admin comum.", responses: { "200": { description: "Resumo consolidado" } } },
+      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Resumo do dashboard", description: "Disponível para Admin Master, Admin comum, aprovadores e usuários com criação de teste_calce. Perfis não master recebem dados filtrados por escopo.", responses: { "200": { description: "Resumo consolidado" } } },
     },
     "/admin/dashboard/analytics": {
-      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Indicadores analíticos do dashboard", description: "Disponível para Admin Master e Admin comum.", responses: { "200": { description: "Analytics" } } },
+      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Indicadores analíticos do dashboard", description: "Disponível para Admin Master, Admin comum, aprovadores e usuários com criação de teste_calce. Perfis não master recebem dados filtrados por escopo.", responses: { "200": { description: "Analytics" } } },
     },
     "/admin/dashboard/export-solicitacoes": {
-      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Exporta solicitações com filtros", description: "Disponível para Admin Master e Admin comum.", responses: { "200": { description: "Exportação das solicitações" } } },
+      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Exporta solicitações com filtros", description: "Disponível para Admin Master, Admin comum, aprovadores e usuários com criação de teste_calce. Perfis não master recebem dados filtrados por escopo.", responses: { "200": { description: "Exportação das solicitações" } } },
     },
     "/admin/dashboard/recent-activity": {
-      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Retorna a atividade recente", description: "Disponível para Admin Master e Admin comum.", responses: { "200": { description: "Atividade recente" } } },
+      get: { tags: ["Dashboard"], security: [{ cookieAuth: [] }], summary: "Retorna a atividade recente", description: "Disponível para Admin Master, Admin comum, aprovadores e usuários com criação de teste_calce. Perfis não master recebem dados filtrados por escopo.", responses: { "200": { description: "Atividade recente" } } },
     },
   },
 };

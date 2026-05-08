@@ -4,6 +4,7 @@ import {
   aprovarTrocaSolicitacao,
   cancelarSolicitacao,
   criarSolicitacao,
+  invalidarVoucherSolicitacao,
   listarSolicitacoesSeparacao,
   listarSolicitacoes,
   listarSolicitacoesTroca,
@@ -14,12 +15,14 @@ import {
 import {
   AprovarSolicitacaoInput,
   CreateSolicitacaoInput,
+  InvalidarVoucherInput,
   ListSolicitacaoSeparacaoQuery,
   ListSolicitacaoQuery,
   SepararSolicitacaoInput,
 } from "../schemas/solicitacao.schema";
 import {CustomError} from "../types/CustomError";
 import { TipoRequisicao } from "../models/Solicitacao";
+import { loadAuthorizationContext } from "../middleware/authorization.middleware";
 
 export const postSolicitacoes = async (
   req: Request<{}, {}, CreateSolicitacaoInput>,
@@ -62,6 +65,7 @@ export const getSolicitacoes = async (
       !(req.isMasterAdmin ?? false)
       && !(req.isAdmin ?? false)
       && !(req.canApproveTrade ?? false)
+      && (req.creationPermissions ?? []).length === 0
       && (req.approvalPermissions ?? []).length === 0
       && (req.separationPermissions ?? []).length > 0;
 
@@ -264,6 +268,46 @@ export const postSolicitacaoCancelar = async (
     }
 
     const result = await cancelarSolicitacao(id, motivo, usuarioCancelamento);
+    res.status(result.status).json(result.body);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const postSolicitacaoInvalidarVoucher = async (
+  req: Request<{ id: string }, {}, InvalidarVoucherInput>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+    const { motivo } = req.body;
+    const usuarioInvalidacao = req.user?.matricula !== undefined
+      ? Number(req.user.matricula)
+      : undefined;
+
+    if (usuarioInvalidacao === undefined) {
+      throw new CustomError("Usuário não autenticado", 401);
+    }
+
+    if (Number.isNaN(usuarioInvalidacao)) {
+      throw new CustomError("Matrícula do usuário autenticado inválida", 400);
+    }
+
+    const context = await loadAuthorizationContext(req);
+    const invalidacaoTiposPermitidos = context.isMasterAdmin
+      ? null
+      : [...new Set([...context.adminPermissions, ...context.approvalPermissions])];
+
+    const result = await invalidarVoucherSolicitacao(
+      id,
+      motivo,
+      usuarioInvalidacao,
+      {
+        isMasterAdmin: context.isMasterAdmin,
+        allowedTypes: invalidacaoTiposPermitidos,
+      }
+    );
     res.status(result.status).json(result.body);
   } catch (error) {
     next(error);

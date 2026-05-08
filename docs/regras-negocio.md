@@ -58,6 +58,7 @@ O sistema aplica autorização por papel operacional e escopo por `tipo_requisic
 ## Tipos de requisição
 
 - `teste_calce`
+- `gratificacao`
 - `brinde_interno`
 - `pense_aja`
 - `campanha`
@@ -84,6 +85,7 @@ O sistema aplica autorização por papel operacional e escopo por `tipo_requisic
 - `marca`
 - `modelo`
 - `brinde_id`
+- `bonificacao_user_liberacao`
 
 ## Regras de criação da solicitação
 
@@ -149,6 +151,10 @@ O sistema aplica autorização por papel operacional e escopo por `tipo_requisic
 - `teste_calce`
   - sai de `pendente_aprovacao` para `aprovado`
   - gera voucher imediatamente
+- `gratificacao`
+  - sai de `pendente_aprovacao` para `aprovado`
+  - exige `bonificacao_user_liberacao`
+  - gera voucher imediatamente
 - demais tipos
   - saem de `pendente_aprovacao` para `aguardando_separacao`
   - ainda não geram voucher
@@ -160,7 +166,7 @@ O sistema aplica autorização por papel operacional e escopo por `tipo_requisic
   - aceitar `brinde_id`
   - aceitar override de `marca/modelo`
 - para `campanha` e `falta_zero`, o brinde pode ser consolidado nessa etapa
-- para `teste_calce`, o brinde já precisa estar resolvido na solicitação
+- para `teste_calce` e `gratificacao`, o brinde já precisa estar resolvido na solicitação
 
 ## Regras de separação
 
@@ -258,6 +264,18 @@ O sistema aplica autorização por papel operacional e escopo por `tipo_requisic
 - se já houver voucher, ele também deve ser cancelado e inativado
 - o motivo é exigido na rota e fica registrado no histórico
 
+## Regras de invalidação de voucher
+
+- ocorre em `POST /solicitacoes/:id/invalidar-voucher`
+- exige justificativa em `motivo`
+- permitido para Admin Master, Admin ou aprovador com escopo do `tipo_requisicao`
+- a solicitação precisa estar `aprovado`
+- o voucher precisa existir, estar `pendente` e `ativo = true`
+- a solicitação passa para `invalidado`
+- o voucher passa para `invalidado` e `ativo = false`
+- dashboard, analytics, exportação e atividades recentes desconsideram solicitações invalidadas
+- o histórico permanece disponível para auditoria
+
 ## Catálogo de brindes ativos
 
 O catálogo administrativo é usado para modularizar a gestão dos itens liberáveis.
@@ -315,6 +333,8 @@ A rota:
 - agrega permissões de criação, bipagem, aprovação, separação e administração
 - informa flags como `canCreateSolicitacao`, `canBiparVoucher`, `canViewSolicitacoes`, `canViewDashboard` e `canManageAdminUsers`
 - retorna os escopos por `tipo_requisicao` no campo `tipos`
+- libera listagem para usuários com permissão de criação, dentro dos próprios tipos
+- libera dashboard para Admins, aprovadores e criadores de `teste_calce`; perfis não master recebem dados filtrados pelo próprio escopo
 
 Essa resposta deve ser usada para exibir ou ocultar atalhos no frontend. Ela não substitui a autorização final aplicada pelas rotas de criação, aprovação, separação, bipagem, listagem e administração.
 
@@ -329,12 +349,14 @@ Essa resposta deve ser usada para exibir ou ocultar atalhos no frontend. Ela nã
 - `rejeitado`
 - `retirado`
 - `cancelado`
+- `invalidado`
 
 ### Voucher
 
 - `pendente`
 - `resgatado`
 - `cancelado`
+- `invalidado`
 
 ## Histórico de solicitação
 
@@ -349,8 +371,9 @@ Cada solicitação mantém eventos persistidos em tabela própria, cobrindo:
 - retirada
 - solicitação de troca
 - aprovação de troca
+- invalidação de voucher
 
-Esse histórico também registra alterações de `marca/modelo` e metadados como `brinde_id` e motivo de cancelamento.
+Esse histórico também registra alterações de `marca/modelo` e metadados como `brinde_id`, motivo de cancelamento, justificativa de invalidação e `bonificacao_user_liberacao`.
 
 ## Diagrama resumido
 

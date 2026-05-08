@@ -19,6 +19,7 @@ export enum AcaoSolicitacaoHistorico {
   SEPARACAO_CONFIRMADA = "separacao_confirmada",
   CANCELAMENTO = "cancelamento",
   RETIRADA = "retirada",
+  INVALIDACAO_VOUCHER = "invalidacao_voucher",
 }
 
 @Entity({ name: "solicitacao_historico", schema: "liberacao_brinde" })

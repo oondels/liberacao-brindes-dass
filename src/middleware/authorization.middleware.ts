@@ -3,20 +3,24 @@ import { AppDataSource } from "../config/db";
 import { TipoRequisicao } from "../models/Solicitacao";
 import { UserAdmin } from "../models/UserAdmin";
 import { UserAprovacao } from "../models/UserAprovacao";
+import { UserCriacaoSolicitacao } from "../models/UserCriacaoSolicitacao";
 import { UserSeparacao } from "../models/UserSeparacao";
 import { CustomError } from "../types/CustomError";
 
 export const MASTER_ADMIN_SECTOR = "automacao";
 
-type AuthorizationContext = {
+export type AuthorizationContext = {
   isMasterAdmin: boolean;
   isAdmin: boolean;
   adminPermissions: TipoRequisicao[];
+  creationPermissions: TipoRequisicao[];
   approvalPermissions: TipoRequisicao[];
   canApproveTrade: boolean;
   separationPermissions: TipoRequisicao[];
   tradeApprovalPermissions: TipoRequisicao[] | null;
   allowedSolicitacaoTypes: TipoRequisicao[] | null;
+  dashboardPermissions: TipoRequisicao[] | null;
+  canViewDashboard: boolean;
 };
 
 const getAuthenticatedMatricula = (req: Request): number => {
@@ -50,11 +54,14 @@ export const loadAuthorizationContext = async (req: Request): Promise<Authorizat
       isMasterAdmin: req.isMasterAdmin,
       isAdmin: req.isAdmin,
       adminPermissions: req.adminPermissions ?? [],
+      creationPermissions: req.creationPermissions ?? [],
       approvalPermissions: req.approvalPermissions ?? [],
       canApproveTrade: req.canApproveTrade ?? false,
       separationPermissions: req.separationPermissions ?? [],
       tradeApprovalPermissions: req.tradeApprovalPermissions ?? null,
       allowedSolicitacaoTypes: req.allowedSolicitacaoTypes,
+      dashboardPermissions: req.dashboardPermissions ?? null,
+      canViewDashboard: req.canViewDashboard ?? false,
     };
   }
 
@@ -62,17 +69,19 @@ export const loadAuthorizationContext = async (req: Request): Promise<Authorizat
   const userSector = req.user?.setor?.toLowerCase().trim() ?? "";
   const isMasterAdmin = userSector === MASTER_ADMIN_SECTOR;
 
-  const [userAdmin, userAprovacao, userSeparacao] = await Promise.all([
+  const [userAdmin, userAprovacao, userSeparacao, userCriacao] = await Promise.all([
     isMasterAdmin
       ? Promise.resolve(null)
       : AppDataSource.getRepository(UserAdmin).findOne({ where: { matricula } }),
     AppDataSource.getRepository(UserAprovacao).findOne({ where: { matricula } }),
     AppDataSource.getRepository(UserSeparacao).findOne({ where: { matricula } }),
+    AppDataSource.getRepository(UserCriacaoSolicitacao).findOne({ where: { matricula } }),
   ]);
 
   const adminPermissions = isMasterAdmin
     ? Object.values(TipoRequisicao)
     : normalizePermissions(userAdmin?.tipo_requisicao);
+  const creationPermissions = normalizePermissions(userCriacao?.tipo_requisicao);
   const approvalPermissions = normalizePermissions(userAprovacao?.tipo_requisicao);
   const separationPermissions = normalizePermissions(userSeparacao?.tipo_requisicao);
   const tradeApprovalPermissions = userAprovacao?.pode_aprovar_troca
@@ -83,26 +92,46 @@ export const loadAuthorizationContext = async (req: Request): Promise<Authorizat
     ? null
     : userAdmin
       ? adminPermissions
-      : uniquePermissions(approvalPermissions, separationPermissions);
+      : uniquePermissions(approvalPermissions, separationPermissions, creationPermissions);
+
+  const creationEnablesDashboard = creationPermissions.includes(TipoRequisicao.TESTE_CALCE);
+  const canViewDashboard = isMasterAdmin
+    || !!userAdmin
+    || approvalPermissions.length > 0
+    || creationEnablesDashboard;
+  const dashboardPermissions = isMasterAdmin
+    ? null
+    : userAdmin
+      ? adminPermissions
+      : uniquePermissions(
+          approvalPermissions,
+          creationEnablesDashboard ? creationPermissions : []
+        );
 
   req.isMasterAdmin = isMasterAdmin;
   req.isAdmin = isMasterAdmin || !!userAdmin;
   req.adminPermissions = adminPermissions;
+  req.creationPermissions = creationPermissions;
   req.approvalPermissions = approvalPermissions;
   req.canApproveTrade = !!userAprovacao?.pode_aprovar_troca;
   req.separationPermissions = separationPermissions;
   req.tradeApprovalPermissions = tradeApprovalPermissions;
   req.allowedSolicitacaoTypes = allowedSolicitacaoTypes;
+  req.canViewDashboard = canViewDashboard;
+  req.dashboardPermissions = dashboardPermissions;
 
   return {
     isMasterAdmin,
     isAdmin: req.isAdmin,
     adminPermissions,
+    creationPermissions,
     approvalPermissions,
     canApproveTrade: req.canApproveTrade,
     separationPermissions,
     tradeApprovalPermissions,
     allowedSolicitacaoTypes,
+    dashboardPermissions,
+    canViewDashboard,
   };
 };
 
@@ -139,11 +168,29 @@ export const authorizeSolicitacaoView = async (
 
   const hasOperationalScope =
     context.isAdmin
+    || context.creationPermissions.length > 0
     || context.approvalPermissions.length > 0
     || context.separationPermissions.length > 0;
 
   if (!hasOperationalScope || !context.allowedSolicitacaoTypes || context.allowedSolicitacaoTypes.length === 0) {
     throw new CustomError("Usuário sem permissão para visualizar solicitações", 403);
+  }
+
+  next();
+};
+
+export const authorizeDashboardView = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+) => {
+  const context = await loadAuthorizationContext(req);
+
+  if (
+    !context.canViewDashboard
+    || (!context.isMasterAdmin && (!context.dashboardPermissions || context.dashboardPermissions.length === 0))
+  ) {
+    throw new CustomError("Usuário sem permissão para visualizar dashboard", 403);
   }
 
   next();

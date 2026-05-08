@@ -34,6 +34,7 @@ Campos relevantes:
 - `entregue_por`
 - `data_entregue`
 - `gerente_aprovacao`
+- `bonificacao_user_liberacao`
 - `data_aprovado`
 - `status`
 - `usuario_criador`
@@ -53,6 +54,7 @@ Observações:
 - `brinde_id` é opcional
 - `categoria_infantil` identifica solicitações de brinde infantil e usa `false` como padrão
 - `marca` e `modelo` podem permanecer vazios até aprovação ou separação, dependendo do tipo
+- `bonificacao_user_liberacao` é preenchida na aprovação de solicitações `gratificacao`
 
 ### `vounchers`
 
@@ -77,6 +79,7 @@ Observações:
 
 - cada solicitação pode ter no máximo um voucher
 - o voucher só é gerado após aprovação final
+- vouchers invalidados permanecem na tabela com `status = invalidado` e `ativo = false`
 
 ### `solicitacao_historico`
 

@@ -73,7 +73,7 @@ Lista solicitações com filtros por:
 
 Regras de acesso:
 
-- disponível apenas para `Admin Master`, `Admin`, `Aprovador` e `Separador`
+- disponível para `Admin Master`, `Admin`, `Aprovador`, `Separador` e usuários com permissão de criação
 - `Admin Master` vê todos os tipos
 - os demais perfis veem exclusivamente os `tipo_requisicao` do seu cadastro
 - `Separador` sem outro perfil vê somente solicitações em `aguardando_separacao`
@@ -115,6 +115,14 @@ Confirma a separação e consolida o brinde final.
 ### `POST /solicitacoes/:id/cancelar`
 
 Cancela a solicitação.
+
+### `POST /solicitacoes/:id/invalidar-voucher`
+
+Invalida voucher de solicitação `aprovado` com voucher `pendente` e `ativo`.
+
+Body:
+
+- `motivo`
 
 ## Retiradas
 
@@ -205,7 +213,8 @@ Observações:
 
 Observações:
 
-- acesso permitido para `Admin Master` e `Admin`
+- acesso permitido para `Admin Master`, `Admin`, aprovadores e usuários com criação de `teste_calce`
+- perfis não master recebem dados filtrados por escopo de tipos
 
 ## Dashboard
 

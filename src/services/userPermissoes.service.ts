@@ -3,17 +3,7 @@ import { TipoRequisicao } from "../models/Solicitacao";
 import { UserBipagem } from "../models/UserBipagem";
 import { UserCriacaoSolicitacao } from "../models/UserCriacaoSolicitacao";
 import { ServiceResult } from "../types/service";
-
-type AuthorizationContext = {
-  isMasterAdmin: boolean;
-  isAdmin: boolean;
-  adminPermissions: TipoRequisicao[];
-  approvalPermissions: TipoRequisicao[];
-  canApproveTrade: boolean;
-  separationPermissions: TipoRequisicao[];
-  tradeApprovalPermissions: TipoRequisicao[] | null;
-  allowedSolicitacaoTypes: TipoRequisicao[] | null;
-};
+import type { AuthorizationContext } from "../middleware/authorization.middleware";
 
 export type UserPermissoesResponse = {
   isAdmin: boolean;
@@ -51,6 +41,7 @@ const canViewSolicitacoes = (context: AuthorizationContext): boolean => {
 
   const hasOperationalScope =
     context.isAdmin
+    || context.creationPermissions.length > 0
     || context.approvalPermissions.length > 0
     || context.separationPermissions.length > 0;
 
@@ -90,7 +81,7 @@ export const obterPermissoesUsuario = async (
       canManageBipagemUsers: canManageAdminArea,
       canManageSeparacaoUsers: canManageAdminArea,
       canManageAdminUsers: context.isMasterAdmin,
-      canViewDashboard: canManageAdminArea,
+      canViewDashboard: context.canViewDashboard,
       tipos: {
         criacao: criacaoTipos,
         bipagem: bipagemTipos,

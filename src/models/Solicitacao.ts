@@ -16,6 +16,7 @@ import { BrindeAtivo } from './BrindeAtivo';
 
 export enum TipoRequisicao {
   TESTE_CALCE = 'teste_calce',
+  GRATIFICACAO = 'gratificacao',
   BRINDE_INTERNO = 'brinde_interno',
   PENS_EAJA = 'pense_aja',
   CAMPANHA = 'campanha',
@@ -43,7 +44,8 @@ export enum StatusSolicitacaoBrinde {
   APROVADO = 'aprovado',
   REJEITADO = 'rejeitado',
   RETIRADO= 'retirado',
-  CANCELADO= 'cancelado'
+  CANCELADO= 'cancelado',
+  INVALIDADO = 'invalidado'
 }
 @Entity({ name: 'solicitacoes', schema: 'liberacao_brinde' })
 @Check(`"num_calce" >= 10 AND "num_calce" <= 60`)
@@ -132,6 +134,9 @@ export class SolicitacaoBrinde {
 
   @Column({ type: 'int8', nullable: true })
   gerente_aprovacao?: number;
+
+  @Column({ type: 'int8', nullable: true })
+  bonificacao_user_liberacao?: number | null;
 
   @Column({ type: 'timestamp', nullable: true })
   data_aprovado?: Date;

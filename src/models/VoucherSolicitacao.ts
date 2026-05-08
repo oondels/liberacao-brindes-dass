@@ -12,7 +12,8 @@ import { SolicitacaoBrinde } from './Solicitacao';
 export enum StatusSVouncher {
   PENDENTE = 'pendente',
   RESGATADO = 'resgatado',
-  CANCELADO = 'cancelado'
+  CANCELADO = 'cancelado',
+  INVALIDADO = 'invalidado'
 }
 @Entity({ name: 'vounchers', schema: 'liberacao_brinde' })
 export class VoucherSolicitacao {

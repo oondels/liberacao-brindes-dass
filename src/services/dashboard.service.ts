@@ -1,3 +1,4 @@
+import { ObjectLiteral, SelectQueryBuilder } from "typeorm";
 import { AppDataSource } from "../config/db";
 import {
   GeneroSolicitacao,
@@ -23,6 +24,34 @@ import {
 
 const solicitacaoRepository = AppDataSource.getRepository(SolicitacaoBrinde);
 const voucherRepository = AppDataSource.getRepository(VoucherSolicitacao);
+
+export type DashboardAccessScope = {
+  isMasterAdmin: boolean;
+  allowedTypes: TipoRequisicao[] | null;
+};
+
+const applyDashboardScope = <T extends ObjectLiteral>(
+  query: SelectQueryBuilder<T>,
+  alias: string,
+  access: DashboardAccessScope
+): SelectQueryBuilder<T> => {
+  query.andWhere(`${alias}.status != :dashboardStatusInvalidado`, {
+    dashboardStatusInvalidado: StatusSolicitacaoBrinde.INVALIDADO,
+  });
+
+  if (!access.isMasterAdmin) {
+    if (!access.allowedTypes || access.allowedTypes.length === 0) {
+      query.andWhere("1 = 0");
+      return query;
+    }
+
+    query.andWhere(`${alias}.tipo_requisicao IN (:...dashboardAllowedTypes)`, {
+      dashboardAllowedTypes: access.allowedTypes,
+    });
+  }
+
+  return query;
+};
 
 const toUtcMonthStart = (date: Date): Date =>
   new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1, 0, 0, 0, 0));
@@ -62,7 +91,9 @@ const buildDailySeries = (
   return output;
 };
 
-export const getDashboardSummary = async (): Promise<ServiceResult<DashboardSummaryDTO>> => {
+export const getDashboardSummary = async (
+  access: DashboardAccessScope
+): Promise<ServiceResult<DashboardSummaryDTO>> => {
   const now = new Date();
   const monthStartUtc = toUtcMonthStart(now);
   const nextMonthStartUtc = toUtcNextMonthStart(now);
@@ -70,30 +101,46 @@ export const getDashboardSummary = async (): Promise<ServiceResult<DashboardSumm
 
   const [pendingApprovals, activeVouchers, totalDeliveredMonth, totalLast30, rejectedLast30] =
     await Promise.all([
-      solicitacaoRepository.count({
-        where: { status: StatusSolicitacaoBrinde.PENDENTE_APROVACAO },
-      }),
-      voucherRepository.count({
-        where: {
-          status: StatusSVouncher.PENDENTE,
-          ativo: true,
-        },
-      }),
-      solicitacaoRepository
-        .createQueryBuilder("s")
-        .where("s.entregue = :entregue", { entregue: true })
-        .andWhere("s.data_entregue >= :monthStart", { monthStart: monthStartUtc })
-        .andWhere("s.data_entregue < :nextMonthStart", { nextMonthStart: nextMonthStartUtc })
-        .getCount(),
-      solicitacaoRepository
-        .createQueryBuilder("s")
-        .where("s.created_at >= :thirtyDaysAgo", { thirtyDaysAgo })
-        .getCount(),
-      solicitacaoRepository
-        .createQueryBuilder("s")
-        .where("s.created_at >= :thirtyDaysAgo", { thirtyDaysAgo })
-        .andWhere("s.status = :status", { status: StatusSolicitacaoBrinde.REJEITADO })
-        .getCount(),
+      applyDashboardScope(
+        solicitacaoRepository
+          .createQueryBuilder("s")
+          .where("s.status = :status", { status: StatusSolicitacaoBrinde.PENDENTE_APROVACAO }),
+        "s",
+        access
+      ).getCount(),
+      applyDashboardScope(
+        voucherRepository
+          .createQueryBuilder("v")
+          .leftJoin("v.solicitacao", "s")
+          .where("v.status = :voucherStatus", { voucherStatus: StatusSVouncher.PENDENTE })
+          .andWhere("v.ativo = :voucherAtivo", { voucherAtivo: true }),
+        "s",
+        access
+      ).getCount(),
+      applyDashboardScope(
+        solicitacaoRepository
+          .createQueryBuilder("s")
+          .where("s.entregue = :entregue", { entregue: true })
+          .andWhere("s.data_entregue >= :monthStart", { monthStart: monthStartUtc })
+          .andWhere("s.data_entregue < :nextMonthStart", { nextMonthStart: nextMonthStartUtc }),
+        "s",
+        access
+      ).getCount(),
+      applyDashboardScope(
+        solicitacaoRepository
+          .createQueryBuilder("s")
+          .where("s.created_at >= :thirtyDaysAgo", { thirtyDaysAgo }),
+        "s",
+        access
+      ).getCount(),
+      applyDashboardScope(
+        solicitacaoRepository
+          .createQueryBuilder("s")
+          .where("s.created_at >= :thirtyDaysAgo", { thirtyDaysAgo })
+          .andWhere("s.status = :status", { status: StatusSolicitacaoBrinde.REJEITADO }),
+        "s",
+        access
+      ).getCount(),
     ]);
 
   const rejectedRatio =
@@ -110,41 +157,59 @@ export const getDashboardSummary = async (): Promise<ServiceResult<DashboardSumm
   };
 };
 
-export const getDashboardAnalytics = async (): Promise<ServiceResult<DashboardAnalyticsDTO>> => {
+export const getDashboardAnalytics = async (
+  access: DashboardAccessScope
+): Promise<ServiceResult<DashboardAnalyticsDTO>> => {
   const endUtcExclusive = addUtcDays(toUtcDayStart(new Date()), 1);
   const startUtc14Days = addUtcDays(endUtcExclusive, -14);
 
   const [statusRows, typeRows, sectorRows, dailyRows] = await Promise.all([
-    solicitacaoRepository
-      .createQueryBuilder("s")
-      .select("s.status", "status")
-      .addSelect("COUNT(*)", "count")
+    applyDashboardScope(
+      solicitacaoRepository
+        .createQueryBuilder("s")
+        .select("s.status", "status")
+        .addSelect("COUNT(*)", "count"),
+      "s",
+      access
+    )
       .groupBy("s.status")
       .orderBy("count", "DESC")
       .getRawMany<{ status: StatusSolicitacaoBrinde; count: string }>(),
-    solicitacaoRepository
-      .createQueryBuilder("s")
-      .select("s.tipo_requisicao", "tipo_requisicao")
-      .addSelect("COUNT(*)", "count")
+    applyDashboardScope(
+      solicitacaoRepository
+        .createQueryBuilder("s")
+        .select("s.tipo_requisicao", "tipo_requisicao")
+        .addSelect("COUNT(*)", "count"),
+      "s",
+      access
+    )
       .groupBy("s.tipo_requisicao")
       .orderBy("count", "DESC")
       .getRawMany<{ tipo_requisicao: string; count: string }>(),
-    solicitacaoRepository
-      .createQueryBuilder("s")
-      .select("s.setor", "setor")
-      .addSelect("COUNT(*)", "count")
-      .where("s.setor IS NOT NULL")
-      .andWhere("TRIM(s.setor) <> ''")
+    applyDashboardScope(
+      solicitacaoRepository
+        .createQueryBuilder("s")
+        .select("s.setor", "setor")
+        .addSelect("COUNT(*)", "count")
+        .where("s.setor IS NOT NULL")
+        .andWhere("TRIM(s.setor) <> ''"),
+      "s",
+      access
+    )
       .groupBy("s.setor")
       .orderBy("count", "DESC")
       .limit(5)
       .getRawMany<{ setor: string; count: string }>(),
-    solicitacaoRepository
-      .createQueryBuilder("s")
-      .select("TO_CHAR(DATE_TRUNC('day', s.created_at), 'YYYY-MM-DD')", "date")
-      .addSelect("COUNT(*)", "count")
-      .where("s.created_at >= :startDate", { startDate: startUtc14Days })
-      .andWhere("s.created_at < :endDate", { endDate: endUtcExclusive })
+    applyDashboardScope(
+      solicitacaoRepository
+        .createQueryBuilder("s")
+        .select("TO_CHAR(DATE_TRUNC('day', s.created_at), 'YYYY-MM-DD')", "date")
+        .addSelect("COUNT(*)", "count")
+        .where("s.created_at >= :startDate", { startDate: startUtc14Days })
+        .andWhere("s.created_at < :endDate", { endDate: endUtcExclusive }),
+      "s",
+      access
+    )
       .groupBy("DATE_TRUNC('day', s.created_at)")
       .orderBy("DATE_TRUNC('day', s.created_at)", "ASC")
       .getRawMany<{ date: string; count: string }>(),
@@ -171,18 +236,22 @@ export const getDashboardAnalytics = async (): Promise<ServiceResult<DashboardAn
 };
 
 export const getDashboardRecentActivity = async (
-  query: DashboardRecentActivityQueryInput
+  query: DashboardRecentActivityQueryInput,
+  access: DashboardAccessScope
 ): Promise<ServiceResult<DashboardRecentActivityDTO>> => {
   const page = query.page ?? 1;
   const limit = query.limit ?? 10;
   const skip = (page - 1) * limit;
 
-  const queryBuilder = solicitacaoRepository
-    .createQueryBuilder("s")
-    .leftJoinAndSelect("s.voucher", "v")
-    .leftJoin(User, "u", "u.matricula = s.matricula")
-    .addSelect("u.nome", "user_nome")
-    .orderBy("s.created_at", "DESC");
+  const queryBuilder = applyDashboardScope(
+    solicitacaoRepository
+      .createQueryBuilder("s")
+      .leftJoinAndSelect("s.voucher", "v")
+      .leftJoin(User, "u", "u.matricula = s.matricula")
+      .addSelect("u.nome", "user_nome"),
+    "s",
+    access
+  ).orderBy("s.created_at", "DESC");
 
   const total = await queryBuilder.clone().getCount();
   const { entities, raw } = await queryBuilder.skip(skip).take(limit).getRawAndEntities();
@@ -232,18 +301,23 @@ export const getDashboardRecentActivity = async (
 };
 
 export const getDashboardExportSolicitacoes = async (
-  query: DashboardExportQueryInput
+  query: DashboardExportQueryInput,
+  access: DashboardAccessScope
 ): Promise<ServiceResult<DashboardExportSolicitacoesDTO>> => {
   const startUtc = toDateOnlyUtc(query.data_inicial);
   const endUtcExclusive = addUtcDays(toDateOnlyUtc(query.data_final), 1);
 
-  const rows = await solicitacaoRepository
-    .createQueryBuilder("s")
-    .leftJoin("s.voucher", "v")
-    .leftJoin(User, "u_colaborador", "u_colaborador.matricula = s.matricula")
-    .leftJoin(User, "u_criador", "u_criador.matricula = s.usuario_criador")
-    .leftJoin(User, "u_aprovador", "u_aprovador.matricula = s.gerente_aprovacao")
-    .select("s.id", "id")
+  const rows = await applyDashboardScope(
+    solicitacaoRepository
+      .createQueryBuilder("s")
+      .leftJoin("s.voucher", "v")
+      .leftJoin(User, "u_colaborador", "u_colaborador.matricula = s.matricula")
+      .leftJoin(User, "u_criador", "u_criador.matricula = s.usuario_criador")
+      .leftJoin(User, "u_aprovador", "u_aprovador.matricula = s.gerente_aprovacao")
+      .select("s.id", "id"),
+    "s",
+    access
+  )
     .addSelect("NULLIF(TRIM(u_criador.nome), '')", "solicitante_nome")
     .addSelect("s.usuario_criador", "usuario_criador_matricula")
     .addSelect("NULLIF(TRIM(u_criador.nome), '')", "usuario_criador_nome")
@@ -251,6 +325,7 @@ export const getDashboardExportSolicitacoes = async (
     .addSelect("s.matricula", "colaborador_matricula")
     .addSelect("s.gerente_aprovacao", "gerente_aprovacao_matricula")
     .addSelect("NULLIF(TRIM(u_aprovador.nome), '')", "gerente_aprovacao_nome")
+    .addSelect("s.bonificacao_user_liberacao", "bonificacao_user_liberacao")
     .addSelect("s.data_aprovado", "data_aprovado")
     .addSelect("s.setor", "setor")
     .addSelect("s.gerente", "gerente")
@@ -267,7 +342,7 @@ export const getDashboardExportSolicitacoes = async (
     .addSelect("s.data_entregue", "data_entregue")
     .addSelect("v.status", "voucher_status")
     .addSelect("v.ativo", "voucher_ativo")
-    .where("s.created_at >= :startUtc", { startUtc })
+    .andWhere("s.created_at >= :startUtc", { startUtc })
     .andWhere("s.created_at < :endUtcExclusive", { endUtcExclusive })
     .orderBy("s.created_at", "DESC")
     .getRawMany<{
@@ -279,6 +354,7 @@ export const getDashboardExportSolicitacoes = async (
       colaborador_matricula: string | number;
       gerente_aprovacao_matricula: string | number | null;
       gerente_aprovacao_nome: string | null;
+      bonificacao_user_liberacao: string | number | null;
       data_aprovado: Date | null;
       setor: string;
       gerente: string;
@@ -313,6 +389,9 @@ export const getDashboardExportSolicitacoes = async (
           ? Number(row.gerente_aprovacao_matricula)
           : null,
         gerente_aprovacao_nome: row.gerente_aprovacao_nome || null,
+        bonificacao_user_liberacao: row.bonificacao_user_liberacao
+          ? Number(row.bonificacao_user_liberacao)
+          : null,
         data_aprovado: row.data_aprovado ?? null,
         setor: row.setor,
         gerente: row.gerente,

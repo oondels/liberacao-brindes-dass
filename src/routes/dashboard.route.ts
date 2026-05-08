@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticateToken } from "../middleware/auth.middleware";
-import { isAdmin } from "../middleware/authorization.middleware";
+import { authorizeDashboardView } from "../middleware/authorization.middleware";
 import { validateRequest } from "../middleware/validate.middleware";
 import {
   getAdminDashboardAnalytics,
@@ -15,7 +15,7 @@ import {
 
 const dashboardRouter = Router();
 
-dashboardRouter.use(authenticateToken, isAdmin);
+dashboardRouter.use(authenticateToken, authorizeDashboardView);
 
 dashboardRouter.get("/dashboard/summary", getAdminDashboardSummary);
 

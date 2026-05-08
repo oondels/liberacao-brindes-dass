@@ -76,6 +76,7 @@ export interface DashboardExportSolicitacaoItemDTO {
   colaborador_matricula: number;
   gerente_aprovacao_matricula: number | null;
   gerente_aprovacao_nome: string | null;
+  bonificacao_user_liberacao: number | null;
   data_aprovado: Date | null;
   setor: string;
   gerente: string;

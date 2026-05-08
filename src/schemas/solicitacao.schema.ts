@@ -2,6 +2,7 @@ import { z } from "zod";
 
 const tipoRequisicaoValues = [
   "teste_calce",
+  "gratificacao",
   "brinde_interno",
   "pense_aja",
   "campanha",
@@ -131,6 +132,27 @@ const optionalInt = z.preprocess(
   z.number().int().nonnegative()
 );
 
+const optionalBodyInt = z.preprocess(
+  (value) => {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+
+    if (typeof value !== "string") {
+      return value;
+    }
+
+    const trimmed = value.trim();
+    if (trimmed === "") {
+      return undefined;
+    }
+
+    const parsed = Number(trimmed);
+    return Number.isNaN(parsed) ? value : parsed;
+  },
+  z.number().int().nonnegative()
+);
+
 const optionalDate = z.preprocess(
   (value) => {
     if (typeof value !== "string") {
@@ -193,6 +215,7 @@ export const listSolicitacaoQuerySchema = z
       "rejeitado",
       "retirado",
       "cancelado",
+      "invalidado",
     ]),
     gerente: optionalTrimmedString.optional(),
     setor: optionalTrimmedString.optional(),
@@ -223,6 +246,7 @@ export const aprovarSolicitacaoSchema = z
     brinde_id: z.string().uuid("Brinde inválido").optional(),
     marca: optionalNonEmptyTrimmedString("Marca deve ser informada"),
     modelo: optionalNonEmptyTrimmedString("Modelo deve ser informado"),
+    bonificacao_user_liberacao: optionalBodyInt.optional(),
   })
   .superRefine((data, ctx) => {
     if ((data.marca && !data.modelo) || (!data.marca && data.modelo)) {
@@ -266,3 +290,9 @@ export const cancelSolicitacaoSchema = z.object({
 });
 
 export type CancelSolicitacaoInput = z.infer<typeof cancelSolicitacaoSchema>;
+
+export const invalidarVoucherSchema = z.object({
+  motivo: z.string().trim().min(1, "Justificativa da invalidação é obrigatória"),
+});
+
+export type InvalidarVoucherInput = z.infer<typeof invalidarVoucherSchema>;
