@@ -12,6 +12,7 @@ import {
 import { AcaoSolicitacaoHistorico, SolicitacaoHistorico } from "../models/SolicitacaoHistorico";
 import { UserAprovacao } from "../models/UserAprovacao";
 import { UserSeparacao } from "../models/UserSeparacao";
+import { User } from "../models/User";
 import { StatusSVouncher, VoucherSolicitacao } from "../models/VoucherSolicitacao";
 import {
   AprovarSolicitacaoInput,
@@ -75,6 +76,10 @@ type SolicitacaoDetalheDTO = Omit<SolicitacaoBrinde, "voucher" | "historico" | "
   voucher: VoucherDTO | null;
   brinde: BrindeAtivoDTO | null;
   historico: SolicitacaoHistoricoDTO[];
+  solicitante: {
+    nome: string | null;
+    matricula: number;
+  };
   separacao: {
     realizada: boolean;
     separado_por?: number;
@@ -241,7 +246,8 @@ const toDetalheDTO = (
     voucher?: VoucherSolicitacao | null;
     historico?: SolicitacaoHistorico[];
     brinde?: BrindeAtivo | null;
-  }
+  },
+  solicitante: { nome: string | null; matricula: number }
 ): SolicitacaoDetalheDTO => {
   const historico = (solicitacao.historico ?? [])
     .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
@@ -252,6 +258,7 @@ const toDetalheDTO = (
     voucher: toVoucherDTO(solicitacao.voucher),
     brinde: toBrindeDTO(solicitacao.brinde),
     historico,
+    solicitante,
     separacao: buildSeparacaoPayload(historico),
   };
 };
@@ -478,7 +485,14 @@ const carregarSolicitacaoDetalhe = async (id: string): Promise<SolicitacaoDetalh
     throw new CustomError("Solicitação não encontrada", 404);
   }
 
-  return toDetalheDTO(solicitacao);
+  const user = await AppDataSource.getRepository(User).findOne({
+    where: { matricula: String(solicitacao.usuario_criador) }
+  });
+
+  return toDetalheDTO(solicitacao, {
+    nome: user?.nome ?? null,
+    matricula: solicitacao.usuario_criador
+  });
 };
 
 export const criarSolicitacao = async (
