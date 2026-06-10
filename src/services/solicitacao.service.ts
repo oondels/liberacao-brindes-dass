@@ -158,31 +158,31 @@ const normalizeOptionalString = (value?: string | null): string | null => {
 const toVoucherDTO = (voucher?: VoucherSolicitacao | null): VoucherDTO | null =>
   voucher
     ? {
-        id: voucher.id,
-        codigo_voucher: voucher.codigo_voucher,
-        status: voucher.status,
-        ativo: voucher.ativo,
-        data_resgate: voucher.data_resgate ?? null,
-        created_at: voucher.created_at,
-        updated_at: voucher.updated_at,
-      }
+      id: voucher.id,
+      codigo_voucher: voucher.codigo_voucher,
+      status: voucher.status,
+      ativo: voucher.ativo,
+      data_resgate: voucher.data_resgate ?? null,
+      created_at: voucher.created_at,
+      updated_at: voucher.updated_at,
+    }
     : null;
 
 const toBrindeDTO = (brinde?: BrindeAtivo | null): BrindeAtivoDTO | null =>
   brinde
     ? {
-        id: brinde.id,
-        nome: brinde.nome,
-        tipo_requisicao: brinde.tipo_requisicao,
-        subgrupo_campanha: brinde.subgrupo_campanha ?? null,
-        marca: brinde.marca ?? null,
-        modelo: brinde.modelo ?? null,
-        genero: brinde.genero ?? null,
-        num_calce: brinde.num_calce ?? null,
-        ativo: brinde.ativo,
-        created_at: brinde.created_at,
-        updated_at: brinde.updated_at,
-      }
+      id: brinde.id,
+      nome: brinde.nome,
+      tipo_requisicao: brinde.tipo_requisicao,
+      subgrupo_campanha: brinde.subgrupo_campanha ?? null,
+      marca: brinde.marca ?? null,
+      modelo: brinde.modelo ?? null,
+      genero: brinde.genero ?? null,
+      num_calce: brinde.num_calce ?? null,
+      ativo: brinde.ativo,
+      created_at: brinde.created_at,
+      updated_at: brinde.updated_at,
+    }
     : null;
 
 const toHistoricoDTO = (item: SolicitacaoHistorico): SolicitacaoHistoricoDTO => ({
@@ -568,6 +568,104 @@ export const criarSolicitacao = async (
   }
 };
 
+export const criarSolicitacoesEmLote = async (
+  solicitacoesLote: (CreateSolicitacaoInput & { usuario_criador?: number })[]
+): Promise<ServiceResult<{ sucesso: boolean; quantidade: number; solicitacoes: SolicitacaoBrinde[] }>> => {
+  const toNumber = (value: string): number | null => {
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? null : parsed;
+  };
+
+  try {
+    const savedLote = await AppDataSource.transaction(async (manager) => {
+      const persistedItems: SolicitacaoBrinde[] = [];
+
+      for (const input of solicitacoesLote) {
+        const matricula = toNumber(input.matricula);
+        const numCalce = toNumber(input.num_calce);
+        const rfid = input.rfid ? toNumber(input.rfid) : null;
+        const codbarras = input.codbarras ? toNumber(input.codbarras) : null;
+        const tipoRequisicao = input.tipo_requisicao as TipoRequisicao;
+        const subgrupoCampanha = (input.subgrupo_campanha as SubgrupoCampanha | undefined) ?? null;
+        const genero = input.genero as GeneroSolicitacao;
+
+        if (matricula === null || numCalce === null) {
+          throw new CustomError("Campos numericos invalidos em um ou mais itens do lote", 400);
+        }
+
+        if (!input.usuario_criador) {
+          throw new CustomError("Usuário criador é obrigatório em todas as solicitações", 400);
+        }
+
+        const snapshot = await resolverSnapshotBrinde({
+          manager,
+          context: {
+            tipo_requisicao: tipoRequisicao,
+            subgrupo_campanha: subgrupoCampanha,
+            genero,
+            num_calce: numCalce,
+          },
+          inputBrindeId: input.brinde_id,
+          inputMarca: input.marca,
+          inputModelo: input.modelo,
+        });
+
+        if (tiposComVoucherGeradoNaAprovacao.includes(tipoRequisicao) && (!snapshot.marca || !snapshot.modelo)) {
+          throw new CustomError("Marca e modelo são obrigatórios para solicitações de teste_calce ou gratificacao", 400);
+        }
+
+        const solicitacao = manager.create(SolicitacaoBrinde, {
+          nome: input.nome,
+          matricula,
+          rfid: rfid ?? undefined,
+          codbarras: codbarras ?? undefined,
+          setor: input.setor,
+          gerente: input.gerente,
+          tipo_requisicao: tipoRequisicao,
+          subgrupo_campanha: subgrupoCampanha ?? undefined,
+          usuario_criador: input.usuario_criador,
+          brinde_id: snapshot.brinde_id,
+          marca: snapshot.marca ?? undefined,
+          modelo: snapshot.modelo ?? undefined,
+          genero,
+          num_calce: numCalce,
+          categoria_infantil: input.categoria_infantil ?? false,
+          status: StatusSolicitacaoBrinde.PENDENTE_APROVACAO,
+        });
+
+        const persisted = await manager.save(SolicitacaoBrinde, solicitacao);
+        await registrarHistorico(manager, {
+          solicitacao: persisted,
+          status_novo: StatusSolicitacaoBrinde.PENDENTE_APROVACAO,
+          acao: AcaoSolicitacaoHistorico.CRIACAO,
+          usuario_matricula: input.usuario_criador,
+          marca_nova: persisted.marca ?? null,
+          modelo_novo: persisted.modelo ?? null,
+          metadata: {
+            brinde_id: persisted.brinde_id ?? null,
+            genero: persisted.genero ?? null,
+            categoria_infantil: persisted.categoria_infantil,
+            origem: "lote",
+          },
+        });
+
+        persistedItems.push(persisted);
+      }
+
+      return persistedItems;
+    });
+
+    return {
+      status: 201, body: {
+        sucesso: true, quantidade: savedLote.length, solicitacoes: savedLote
+      }
+    };
+  } catch (error) {
+    if (error instanceof CustomError) throw error;
+    throw new CustomError("Erro ao criar solicitações em lote", 500);
+  }
+};
+
 export const listarSolicitacoes = async (
   filters: ListSolicitacaoQuery,
   access: {
@@ -714,7 +812,7 @@ export const listarSolicitacoes = async (
       throw error;
     }
     console.log(error);
-    
+
     throw new CustomError("Erro ao listar solicitacoes", 500);
   }
 };

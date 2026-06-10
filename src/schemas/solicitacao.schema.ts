@@ -296,3 +296,9 @@ export const invalidarVoucherSchema = z.object({
 });
 
 export type InvalidarVoucherInput = z.infer<typeof invalidarVoucherSchema>;
+
+export const createSolicitacaoLoteSchema = z.object({
+  solicitacoes: z.array(createSolicitacaoSchema).min(1, "Deve enviar no mínimo 1 solicitação").max(200, "O lote pode ter no máximo 200 solicitações"),
+});
+
+export type CreateSolicitacaoLoteInput = z.infer<typeof createSolicitacaoLoteSchema>;

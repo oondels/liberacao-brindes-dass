@@ -27,13 +27,26 @@ export const createSolicitation = async (req: Request, _res: Response, next: Nex
     throw new CustomError("Matrícula do usuário inválida", 400);
   }
 
-  const tipoRequisicao = req.body?.tipo_requisicao;
-  if (typeof tipoRequisicao !== "string" || !tipoRequisicao.trim()) {
+  const tiposNaRequisicao: Set<string> = new Set();
+  
+  if (typeof req.body?.tipo_requisicao === "string" && req.body.tipo_requisicao.trim()) {
+    tiposNaRequisicao.add(req.body.tipo_requisicao);
+  } else if (Array.isArray(req.body?.solicitacoes)) {
+    for (const sol of req.body.solicitacoes) {
+      if (typeof sol.tipo_requisicao === "string" && sol.tipo_requisicao.trim()) {
+        tiposNaRequisicao.add(sol.tipo_requisicao);
+      }
+    }
+  }
+
+  if (tiposNaRequisicao.size === 0) {
     throw new CustomError("tipo_requisicao é obrigatório para criar solicitação", 400);
   }
 
-  if (!Object.values(TipoRequisicao).includes(tipoRequisicao as TipoRequisicao)) {
-    throw new CustomError(`tipo_requisicao inválido: ${tipoRequisicao}`, 400);
+  for (const tipo of tiposNaRequisicao) {
+    if (!Object.values(TipoRequisicao).includes(tipo as TipoRequisicao)) {
+      throw new CustomError(`tipo_requisicao inválido: ${tipo}`, 400);
+    }
   }
 
   const repository = AppDataSource.getRepository(UserCriacaoSolicitacao);
@@ -46,11 +59,13 @@ export const createSolicitation = async (req: Request, _res: Response, next: Nex
   }
 
   const tiposPermitidos = permissaoCriacao.tipo_requisicao as string[];
-  if (!tiposPermitidos.includes(tipoRequisicao)) {
-    throw new CustomError(
-      `Usuário sem permissão para criar solicitações do tipo '${tipoRequisicao}'`,
-      403
-    );
+  for (const tipo of tiposNaRequisicao) {
+    if (!tiposPermitidos.includes(tipo)) {
+      throw new CustomError(
+        `Usuário sem permissão para criar solicitações do tipo '${tipo}'`,
+        403
+      );
+    }
   }
 
   next();

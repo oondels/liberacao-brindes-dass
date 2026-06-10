@@ -11,6 +11,7 @@ import {
   obterSolicitacaoPorId,
   rejeitarSolicitacao,
   validarSeparacao,
+  criarSolicitacoesEmLote,
 } from "../services/solicitacao.service";
 import {
   AprovarSolicitacaoInput,
@@ -19,6 +20,7 @@ import {
   ListSolicitacaoSeparacaoQuery,
   ListSolicitacaoQuery,
   SepararSolicitacaoInput,
+  CreateSolicitacaoLoteInput,
 } from "../schemas/solicitacao.schema";
 import {CustomError} from "../types/CustomError";
 import { TipoRequisicao } from "../models/Solicitacao";
@@ -51,6 +53,37 @@ export const postSolicitacoes = async (
   } catch (error) {
     console.error("Erro ao criar solicitação. Entre em contato com a equipe de automação.", error);
     next(error)
+  }
+};
+
+export const postSolicitacoesLote = async (
+  req: Request<{}, {}, CreateSolicitacaoLoteInput>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const user = req.user;
+
+    if (!user?.matricula) {
+      throw new CustomError("Usuário não autenticado", 401);
+    }
+
+    const usuarioCriador = Number(user.matricula);
+    if (Number.isNaN(usuarioCriador)) {
+      throw new CustomError("Matrícula do usuário autenticado inválida", 400);
+    }
+
+    const solicitacoes = req.body.solicitacoes.map(solicitacao => ({
+      ...solicitacao,
+      usuario_criador: usuarioCriador,
+    }));
+
+    const result = await criarSolicitacoesEmLote(solicitacoes as (CreateSolicitacaoInput & { usuario_criador?: number })[]);
+    res.status(result.status).json(result.body);
+    return;
+  } catch (error) {
+    console.error("Erro ao criar solicitações em lote. Entre em contato com a equipe de automação.", error);
+    next(error);
   }
 };
 
