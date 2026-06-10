@@ -515,7 +515,7 @@ export const criarSolicitacao = async (
           genero,
           num_calce: numCalce,
         },
-        inputBrindeId: input.brinde_id,
+        inputBrindeId: input.brinde_id?.toString(),
         inputMarca: input.marca,
         inputModelo: input.modelo,
       });
@@ -727,8 +727,8 @@ export const listarSolicitacoes = async (
       query.andWhere("solicitacao.status = :statusSeparacao", {
         statusSeparacao: StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO,
       });
-    } else if (filters.status) {
-      query.andWhere("solicitacao.status = :status", { status: filters.status });
+    } else if ((filters as any).status) {
+      query.andWhere("solicitacao.status = :status", { status: (filters as any).status });
     } else if (!access.isMasterAdmin && !access.canApproveTrade) {
       query.andWhere("solicitacao.status != :statusTroca", {
         statusTroca: StatusSolicitacaoBrinde.AGUARDANDO_TROCA,
@@ -839,12 +839,15 @@ export const listarSolicitacoesSeparacao = async (
   const take = pageSize + 1;
   const skip = (page - 1) * pageSize;
 
-  const entities = await repository
+  let query = repository
     .createQueryBuilder("solicitacao")
-    .where("solicitacao.status = :status", {
-      status: StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO,
-    })
-    .andWhere("solicitacao.tipo_requisicao IN (:...tiposPermitidos)", { tiposPermitidos })
+    .where("solicitacao.tipo_requisicao IN (:...tiposPermitidos)", { tiposPermitidos });
+    
+  if ((filters as any).status) {
+    query = query.andWhere("solicitacao.status = :status", { status: (filters as any).status });
+  }
+
+  const entities = await query
     .orderBy("solicitacao.created_at", "DESC")
     .skip(skip)
     .take(take)
@@ -1120,13 +1123,13 @@ export const validarSeparacao = async (
       inputModelo: input.modelo,
     });
 
-    if (!snapshot.marca || !snapshot.modelo) {
-      throw new CustomError("Separação exige marca e modelo finais preenchidos", 400);
+    if (!snapshot.marca) {
+      throw new CustomError("Separação exige marca final preenchida", 400);
     }
 
     solicitacao.brinde_id = snapshot.brinde_id;
     solicitacao.marca = snapshot.marca;
-    solicitacao.modelo = snapshot.modelo;
+    solicitacao.modelo = snapshot.modelo ?? undefined;
     solicitacao.status = StatusSolicitacaoBrinde.APROVADO;
     solicitacao.updated_by = operadorMatricula;
     solicitacao.updated_at = new Date();
@@ -1157,7 +1160,90 @@ export const validarSeparacao = async (
   } catch (error) {
     await queryRunner.rollbackTransaction();
     if (error instanceof CustomError) throw error;
-    throw new CustomError("Erro ao confirmar separação", 500);
+    throw new CustomError("Erro ao validar separação", 500);
+  } finally {
+    await queryRunner.release();
+  }
+};
+
+export const separarSolicitacoesLote = async (
+  input: { ids: string[]; brinde_id?: number; marca?: string; modelo?: string; operadorMatricula?: number },
+): Promise<ServiceResult<{ success: boolean; message: string; count: number }>> => {
+  const queryRunner = AppDataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
+  try {
+    let successCount = 0;
+    // Opcionalmente: Receber usuario logado. Como a chamada atual não passa usuario de separação,
+    // usamos fallback de admin (1) ou adaptamos se necessário
+    const operadorMatricula = input.operadorMatricula ?? 1; 
+    
+    for (const id of input.ids) {
+      const solicitacao = await queryRunner.manager.findOne(SolicitacaoBrinde, { where: { id } });
+      if (!solicitacao || solicitacao.status !== StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO) {
+        continue;
+      }
+      
+      const marcaAnterior = solicitacao.marca ?? null;
+      const modeloAnterior = solicitacao.modelo ?? null;
+      const brindeAnteriorId = solicitacao.brinde_id ?? null;
+
+      const snapshot = await resolverSnapshotBrinde({
+        manager: queryRunner.manager,
+        context: {
+          tipo_requisicao: solicitacao.tipo_requisicao,
+          subgrupo_campanha: solicitacao.subgrupo_campanha ?? null,
+          genero: solicitacao.genero ?? null,
+          num_calce: solicitacao.num_calce,
+          brinde_id: solicitacao.brinde_id ?? null,
+          marca: solicitacao.marca ?? null,
+          modelo: solicitacao.modelo ?? null,
+        },
+        inputBrindeId: input.brinde_id?.toString(),
+        inputMarca: input.marca,
+        inputModelo: input.modelo,
+      });
+
+      if (!snapshot.marca) {
+        throw new CustomError(`Separação do item ${solicitacao.matricula} exige marca preenchida`, 400);
+      }
+
+      solicitacao.brinde_id = snapshot.brinde_id;
+      solicitacao.marca = snapshot.marca;
+      solicitacao.modelo = snapshot.modelo ?? undefined;
+      solicitacao.status = StatusSolicitacaoBrinde.APROVADO;
+      solicitacao.updated_by = operadorMatricula;
+      solicitacao.updated_at = new Date();
+
+      await queryRunner.manager.save(SolicitacaoBrinde, solicitacao);
+      await criarVoucherParaSolicitacao(queryRunner.manager, solicitacao);
+      await registrarHistorico(queryRunner.manager, {
+        solicitacao,
+        status_anterior: StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO,
+        status_novo: solicitacao.status,
+        acao: AcaoSolicitacaoHistorico.SEPARACAO_CONFIRMADA,
+        usuario_matricula: operadorMatricula,
+        marca_anterior: marcaAnterior,
+        modelo_anterior: modeloAnterior,
+        marca_nova: solicitacao.marca ?? null,
+        modelo_novo: solicitacao.modelo ?? null,
+        metadata: {
+          override_aplicado: Boolean(input.marca || input.modelo),
+          brinde_anterior_id: brindeAnteriorId,
+          brinde_novo_id: solicitacao.brinde_id ?? null,
+        },
+      });
+
+      successCount++;
+    }
+
+    await queryRunner.commitTransaction();
+    return { status: 200, body: { success: true, message: "Lote separado com sucesso", count: successCount } };
+  } catch (error) {
+    await queryRunner.rollbackTransaction();
+    if (error instanceof CustomError) throw error;
+    throw new CustomError("Erro ao validar separação em lote", 500);
   } finally {
     await queryRunner.release();
   }

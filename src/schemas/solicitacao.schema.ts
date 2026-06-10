@@ -265,18 +265,25 @@ export const separarSolicitacaoSchema = z
     brinde_id: z.string().uuid("Brinde inválido").optional(),
     marca: optionalNonEmptyTrimmedString("Marca deve ser informada"),
     modelo: optionalNonEmptyTrimmedString("Modelo deve ser informado"),
-  })
-  .superRefine((data, ctx) => {
-    if ((data.marca && !data.modelo) || (!data.marca && data.modelo)) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Informe marca e modelo juntos para sobrescrever o brinde",
-        path: data.marca ? ["modelo"] : ["marca"],
-      });
-    }
   });
 
 export type SepararSolicitacaoInput = z.infer<typeof separarSolicitacaoSchema>;
+
+export const separarSolicitacoesLoteSchema = z
+  .object({
+    ids: z.array(z.string().uuid("ID inválido")).min(1, "Deve enviar no mínimo 1 solicitação para separar"),
+    brinde_id: z.string().uuid("Brinde inválido").optional(),
+    marca: optionalNonEmptyTrimmedString("Marca deve ser informada"),
+    modelo: optionalNonEmptyTrimmedString("Modelo deve ser informado"),
+  });
+
+export type SepararSolicitacoesLoteInput = z.infer<typeof separarSolicitacoesLoteSchema>;
+
+export const gerarVouchersLoteSchema = z.object({
+  ids: z.array(z.string().uuid("ID inválido")).min(1, "Deve selecionar pelo menos 1 solicitação para gerar vouchers"),
+});
+
+export type GerarVouchersLoteInput = z.infer<typeof gerarVouchersLoteSchema>;
 
 export const listSolicitacaoSeparacaoQuerySchema = z.object({
   page: optionalPage.optional().default(1),

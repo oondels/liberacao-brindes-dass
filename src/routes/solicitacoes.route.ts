@@ -12,6 +12,7 @@ import {
   postSolicitacaoSeparar,
   postSolicitacoes,
   postSolicitacoesLote,
+  postSolicitacoesLoteSeparar,
 } from "../controllers/solicitacao.controller";
 import { validateRequest } from "../middleware/validate.middleware";
 import {
@@ -22,6 +23,7 @@ import {
   listSolicitacaoSeparacaoQuerySchema,
   listSolicitacaoQuerySchema,
   separarSolicitacaoSchema,
+  separarSolicitacoesLoteSchema,
   createSolicitacaoLoteSchema,
 } from "../schemas/solicitacao.schema";
 import { authenticateToken } from "../middleware/auth.middleware";
@@ -111,6 +113,14 @@ solicitacoesRouter.post(
   authenticateToken,
   validateRequest("body", invalidarVoucherSchema),
   postSolicitacaoInvalidarVoucher
+);
+
+solicitacoesRouter.post(
+  "/solicitacoes/lote/separar",
+  authenticateToken,
+  canSeparate,
+  validateRequest("body", separarSolicitacoesLoteSchema),
+  postSolicitacoesLoteSeparar
 );
 
 export default solicitacoesRouter;

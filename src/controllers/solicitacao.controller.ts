@@ -12,6 +12,7 @@ import {
   rejeitarSolicitacao,
   validarSeparacao,
   criarSolicitacoesEmLote,
+  separarSolicitacoesLote,
 } from "../services/solicitacao.service";
 import {
   AprovarSolicitacaoInput,
@@ -21,6 +22,8 @@ import {
   ListSolicitacaoQuery,
   SepararSolicitacaoInput,
   CreateSolicitacaoLoteInput,
+  SepararSolicitacoesLoteInput,
+  GerarVouchersLoteInput,
 } from "../schemas/solicitacao.schema";
 import {CustomError} from "../types/CustomError";
 import { TipoRequisicao } from "../models/Solicitacao";
@@ -341,6 +344,35 @@ export const postSolicitacaoInvalidarVoucher = async (
         allowedTypes: invalidacaoTiposPermitidos,
       }
     );
+    res.status(result.status).json(result.body);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const postSolicitacoesLoteSeparar = async (
+  req: Request<{}, {}, SepararSolicitacoesLoteInput>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const user = req.user;
+
+    if (!user?.matricula) {
+      throw new CustomError("Usuário não autenticado", 401);
+    }
+
+    const operadorMatricula = Number(user.matricula);
+    if (Number.isNaN(operadorMatricula)) {
+      throw new CustomError("Matrícula do usuário autenticado inválida", 400);
+    }
+
+    const payload = {
+      ...req.body,
+      operadorMatricula,
+      brinde_id: req.body.brinde_id ? Number(req.body.brinde_id) : undefined
+    };
+    const result = await separarSolicitacoesLote(payload);
     res.status(result.status).json(result.body);
   } catch (error) {
     next(error);
