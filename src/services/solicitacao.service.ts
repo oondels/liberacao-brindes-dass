@@ -510,6 +510,7 @@ export const criarSolicitacao = async (
   const tipoRequisicao = input.tipo_requisicao as TipoRequisicao;
   const subgrupoCampanha = (input.subgrupo_campanha as SubgrupoCampanha | undefined) ?? null;
   const genero = input.genero as GeneroSolicitacao;
+  const bonificacaoUserLiberacao = input.bonificacao_user_liberacao ? toNumber(input.bonificacao_user_liberacao) : null;
 
   if (matricula === null || numCalce === null) {
     throw new CustomError("Campos numerios invalidos", 400);
@@ -554,6 +555,7 @@ export const criarSolicitacao = async (
         genero,
         num_calce: numCalce,
         categoria_infantil: input.categoria_infantil ?? false,
+        bonificacao_user_liberacao: bonificacaoUserLiberacao ?? undefined,
         status: StatusSolicitacaoBrinde.PENDENTE_APROVACAO,
       });
 
@@ -602,6 +604,7 @@ export const criarSolicitacoesEmLote = async (
         const tipoRequisicao = input.tipo_requisicao as TipoRequisicao;
         const subgrupoCampanha = (input.subgrupo_campanha as SubgrupoCampanha | undefined) ?? null;
         const genero = input.genero as GeneroSolicitacao;
+        const bonificacaoUserLiberacao = input.bonificacao_user_liberacao ? toNumber(input.bonificacao_user_liberacao) : null;
 
         if (matricula === null || numCalce === null) {
           throw new CustomError("Campos numericos invalidos em um ou mais itens do lote", 400);
@@ -644,6 +647,7 @@ export const criarSolicitacoesEmLote = async (
           genero,
           num_calce: numCalce,
           categoria_infantil: input.categoria_infantil ?? false,
+          bonificacao_user_liberacao: bonificacaoUserLiberacao ?? undefined,
           status: StatusSolicitacaoBrinde.PENDENTE_APROVACAO,
         });
 
@@ -1023,13 +1027,6 @@ export const aprovarSolicitacao = async (
       throw new CustomError("A solicitação precisa de marca e modelo definidos para aprovação", 400);
     }
 
-    if (
-      solicitacao.tipo_requisicao === TipoRequisicao.GRATIFICACAO
-      && input.bonificacao_user_liberacao === undefined
-    ) {
-      throw new CustomError("Matrícula de liberação da bonificação é obrigatória para gratificação", 400);
-    }
-
     const statusAnterior = solicitacao.status;
     const updateDate = new Date();
     const brindeAnteriorId = solicitacao.brinde_id ?? null;
@@ -1038,9 +1035,9 @@ export const aprovarSolicitacao = async (
     solicitacao.marca = snapshot.marca ?? undefined;
     solicitacao.modelo = snapshot.modelo ?? undefined;
     solicitacao.gerente_aprovacao = user_aprovador;
-    solicitacao.bonificacao_user_liberacao = solicitacao.tipo_requisicao === TipoRequisicao.GRATIFICACAO
-      ? input.bonificacao_user_liberacao
-      : solicitacao.bonificacao_user_liberacao;
+    if (input.bonificacao_user_liberacao !== undefined) {
+      solicitacao.bonificacao_user_liberacao = input.bonificacao_user_liberacao;
+    }
     solicitacao.updated_by = user_aprovador;
     solicitacao.data_aprovado = updateDate;
     solicitacao.updated_at = updateDate;

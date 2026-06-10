@@ -63,6 +63,7 @@ export const createSolicitacaoSchema = z
     categoria_infantil: z.boolean().optional().default(false),
     rfid: numericString.optional(),
     codbarras: numericString.optional(),
+    bonificacao_user_liberacao: numericString.optional(),
   })
   .superRefine((data, ctx) => {
     const isCampanha = data.tipo_requisicao === "campanha";
@@ -97,6 +98,15 @@ export const createSolicitacaoSchema = z
         code: "custom",
         message: "Modelo obrigatorio",
         path: ["modelo"],
+      });
+    }
+
+    const isGratificacao = data.tipo_requisicao === "gratificacao";
+    if (isGratificacao && !data.bonificacao_user_liberacao) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Matrícula de quem conferiu a bonificação é obrigatória para gratificação",
+        path: ["bonificacao_user_liberacao"],
       });
     }
   });
