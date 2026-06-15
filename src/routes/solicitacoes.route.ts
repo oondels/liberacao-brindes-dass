@@ -78,6 +78,14 @@ solicitacoesRouter.get(
 solicitacoesRouter.get("/solicitacoes/:id", authenticateToken, getSolicitacaoById);
 
 solicitacoesRouter.post(
+  "/solicitacoes/lote/separar",
+  authenticateToken,
+  canSeparate,
+  validateRequest("body", separarSolicitacoesLoteSchema),
+  postSolicitacoesLoteSeparar
+);
+
+solicitacoesRouter.post(
   "/solicitacoes/:id/separar",
   authenticateToken,
   canSeparate,
@@ -115,12 +123,6 @@ solicitacoesRouter.post(
   postSolicitacaoInvalidarVoucher
 );
 
-solicitacoesRouter.post(
-  "/solicitacoes/lote/separar",
-  authenticateToken,
-  canSeparate,
-  validateRequest("body", separarSolicitacoesLoteSchema),
-  postSolicitacoesLoteSeparar
-);
+
 
 export default solicitacoesRouter;

@@ -1169,9 +1169,12 @@ export const validarSeparacao = async (
     const solicitacaoAtualizada = await carregarSolicitacaoDetalhe(id);
     return { status: 200, body: { data: solicitacaoAtualizada } };
   } catch (error) {
-    await queryRunner.rollbackTransaction();
+    console.error("DEBUG ERROR IN validarSeparacao:", error);
+    if (queryRunner.isTransactionActive) {
+      await queryRunner.rollbackTransaction();
+    }
     if (error instanceof CustomError) throw error;
-    throw new CustomError("Erro ao validar separação", 500);
+    throw new CustomError(`Erro ao validar separação: ${error instanceof Error ? error.message : String(error)}`, 500);
   } finally {
     await queryRunner.release();
   }
@@ -1252,9 +1255,12 @@ export const separarSolicitacoesLote = async (
     await queryRunner.commitTransaction();
     return { status: 200, body: { success: true, message: "Lote separado com sucesso", count: successCount } };
   } catch (error) {
-    await queryRunner.rollbackTransaction();
+    console.error("DEBUG ERROR IN separarSolicitacoesLote:", error);
+    if (queryRunner.isTransactionActive) {
+      await queryRunner.rollbackTransaction();
+    }
     if (error instanceof CustomError) throw error;
-    throw new CustomError("Erro ao validar separação em lote", 500);
+    throw new CustomError(`Erro ao validar separação em lote: ${error instanceof Error ? error.message : String(error)}`, 500);
   } finally {
     await queryRunner.release();
   }
