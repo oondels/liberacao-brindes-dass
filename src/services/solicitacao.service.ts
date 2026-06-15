@@ -709,6 +709,7 @@ export const listarSolicitacoes = async (
       access.restrictToSeparationStatus
       && filters.status
       && filters.status !== StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO
+      && filters.status !== StatusSolicitacaoBrinde.APROVADO
     ) {
       throw new CustomError("Filtro de status fora das permissões do usuário", 403);
     }
@@ -742,9 +743,13 @@ export const listarSolicitacoes = async (
     }
 
     if (access.restrictToSeparationStatus) {
-      query.andWhere("solicitacao.status = :statusSeparacao", {
-        statusSeparacao: StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO,
-      });
+      if ((filters as any).status) {
+        query.andWhere("solicitacao.status = :status", { status: (filters as any).status });
+      } else {
+        query.andWhere("solicitacao.status IN (:...statusSeparacao)", {
+          statusSeparacao: [StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO, StatusSolicitacaoBrinde.APROVADO],
+        });
+      }
     } else if ((filters as any).status) {
       query.andWhere("solicitacao.status = :status", { status: (filters as any).status });
     } else if (!access.isMasterAdmin && !access.canApproveTrade) {
@@ -863,6 +868,10 @@ export const listarSolicitacoesSeparacao = async (
     
   if ((filters as any).status) {
     query = query.andWhere("solicitacao.status = :status", { status: (filters as any).status });
+  } else {
+    query = query.andWhere("solicitacao.status IN (:...statusPermitidos)", {
+      statusPermitidos: [StatusSolicitacaoBrinde.AGUARDANDO_SEPARACAO, StatusSolicitacaoBrinde.APROVADO],
+    });
   }
 
   const entities = await query
