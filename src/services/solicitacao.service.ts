@@ -25,7 +25,8 @@ import { CustomError } from "../types/CustomError";
 import { ServiceResult } from "../types/service";
 
 const repository = AppDataSource.getRepository(SolicitacaoBrinde);
-const tiposComBrindeDefinidoNaAprovacao = [TipoRequisicao.CAMPANHA, TipoRequisicao.FALTA_ZERO];
+const tiposComBrindeDefinidoNaAprovacao: TipoRequisicao[] = [];
+// const tiposComBrindeDefinidoNaAprovacao = [TipoRequisicao.CAMPANHA, TipoRequisicao.FALTA_ZERO];
 const tiposComVoucherGeradoNaAprovacao = [TipoRequisicao.TESTE_CALCE, TipoRequisicao.GRATIFICACAO];
 
 type InvalidarVoucherAccess = {
