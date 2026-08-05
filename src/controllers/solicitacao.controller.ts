@@ -13,6 +13,8 @@ import {
   validarSeparacao,
   criarSolicitacoesEmLote,
   separarSolicitacoesLote,
+  marcarVoucherComoBaixado,
+  marcarVouchersEmLoteComoBaixado,
 } from "../services/solicitacao.service";
 import {
   AprovarSolicitacaoInput,
@@ -373,6 +375,39 @@ export const postSolicitacoesLoteSeparar = async (
       brinde_id: req.body.brinde_id ? Number(req.body.brinde_id) : undefined
     };
     const result = await separarSolicitacoesLote(payload);
+    res.status(result.status).json(result.body);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const postSolicitacaoBaixar = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const user = req.user;
+    if (!user?.matricula) throw new CustomError("Usuário não autenticado", 401);
+
+    const result = await marcarVoucherComoBaixado(String(req.params.id), Number(user.matricula));
+    res.status(result.status).json(result.body);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const postSolicitacoesLoteBaixar = async (
+  req: Request<{}, {}, { ids: string[] }>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const user = req.user;
+    if (!user?.matricula) throw new CustomError("Usuário não autenticado", 401);
+
+    const { ids } = req.body;
+    const result = await marcarVouchersEmLoteComoBaixado(ids, Number(user.matricula));
     res.status(result.status).json(result.body);
   } catch (error) {
     next(error);

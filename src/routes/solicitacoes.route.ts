@@ -13,6 +13,8 @@ import {
   postSolicitacoes,
   postSolicitacoesLote,
   postSolicitacoesLoteSeparar,
+  postSolicitacaoBaixar,
+  postSolicitacoesLoteBaixar,
 } from "../controllers/solicitacao.controller";
 import { validateRequest } from "../middleware/validate.middleware";
 import {
@@ -25,6 +27,7 @@ import {
   separarSolicitacaoSchema,
   separarSolicitacoesLoteSchema,
   createSolicitacaoLoteSchema,
+  baixarVouchersLoteSchema,
 } from "../schemas/solicitacao.schema";
 import { authenticateToken } from "../middleware/auth.middleware";
 import { authorizeSolicitacaoView } from "../middleware/authorization.middleware";
@@ -123,6 +126,19 @@ solicitacoesRouter.post(
   postSolicitacaoInvalidarVoucher
 );
 
+solicitacoesRouter.post(
+  "/solicitacoes/lote/marcar-baixado",
+  authenticateToken,
+  authorizeSolicitacaoView,
+  validateRequest("body", baixarVouchersLoteSchema),
+  postSolicitacoesLoteBaixar
+);
 
+solicitacoesRouter.post(
+  "/solicitacoes/:id/marcar-baixado",
+  authenticateToken,
+  authorizeSolicitacaoView,
+  postSolicitacaoBaixar
+);
 
 export default solicitacoesRouter;
