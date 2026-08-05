@@ -25,7 +25,8 @@ import { CustomError } from "../types/CustomError";
 import { ServiceResult } from "../types/service";
 
 const repository = AppDataSource.getRepository(SolicitacaoBrinde);
-const tiposComBrindeDefinidoNaAprovacao = [TipoRequisicao.CAMPANHA, TipoRequisicao.FALTA_ZERO];
+const tiposComBrindeDefinidoNaAprovacao: TipoRequisicao[] = [];
+// const tiposComBrindeDefinidoNaAprovacao = [TipoRequisicao.CAMPANHA, TipoRequisicao.FALTA_ZERO];
 const tiposComVoucherGeradoNaAprovacao = [TipoRequisicao.TESTE_CALCE, TipoRequisicao.GRATIFICACAO];
 
 type InvalidarVoucherAccess = {
@@ -1558,4 +1559,41 @@ export const invalidarVoucherSolicitacao = async (
   } finally {
     await queryRunner.release();
   }
+};
+
+export const marcarVoucherComoBaixado = async (id: string, usuarioId: number): Promise<ServiceResult<null>> => {
+  const solicitacaoRepository = AppDataSource.getRepository(SolicitacaoBrinde);
+  
+  const solicitacao = await solicitacaoRepository.findOne({ where: { id } });
+  if (!solicitacao) {
+    throw new CustomError("Solicitação não encontrada", 404);
+  }
+
+  solicitacao.voucher_baixado = true;
+  solicitacao.updated_by = usuarioId;
+  solicitacao.updated_at = new Date();
+
+  await solicitacaoRepository.save(solicitacao);
+
+  return { status: 200, body: null };
+};
+
+export const marcarVouchersEmLoteComoBaixado = async (ids: string[], usuarioId: number): Promise<ServiceResult<null>> => {
+  if (!ids || ids.length === 0) {
+    return { status: 200, body: null };
+  }
+
+  const solicitacaoRepository = AppDataSource.getRepository(SolicitacaoBrinde);
+  
+  await solicitacaoRepository.createQueryBuilder()
+    .update(SolicitacaoBrinde)
+    .set({
+      voucher_baixado: true,
+      updated_by: usuarioId,
+      updated_at: new Date()
+    })
+    .whereInIds(ids)
+    .execute();
+
+  return { status: 200, body: null };
 };

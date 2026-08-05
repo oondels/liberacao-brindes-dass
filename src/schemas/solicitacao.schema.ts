@@ -319,3 +319,9 @@ export const createSolicitacaoLoteSchema = z.object({
 });
 
 export type CreateSolicitacaoLoteInput = z.infer<typeof createSolicitacaoLoteSchema>;
+
+export const baixarVouchersLoteSchema = z.object({
+  ids: z.array(z.string().uuid("Formato de ID inválido")).min(1, "O lote deve conter pelo menos 1 ID"),
+});
+
+export type BaixarVouchersLoteInput = z.infer<typeof baixarVouchersLoteSchema>;

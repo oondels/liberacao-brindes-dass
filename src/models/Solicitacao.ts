@@ -152,6 +152,9 @@ export class SolicitacaoBrinde {
   @Column({ type: 'int8', nullable: true })
   updated_by?: number;
 
+  @Column({ type: 'bool', default: false })
+  voucher_baixado!: boolean;
+
   @CreateDateColumn({ type: 'timestamp' })
   created_at!: Date;
 
