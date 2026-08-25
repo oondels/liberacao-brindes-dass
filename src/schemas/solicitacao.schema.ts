@@ -55,6 +55,9 @@ export const createSolicitacaoSchema = z
     gerente: z.string().trim().min(1, "Gerente obrigatorio"),
     tipo_requisicao: z.enum(tipoRequisicaoValues),
     subgrupo_campanha: z.enum(subgrupoCampanhaValues).optional(),
+    subgrupo_doacao: optionalNonEmptyTrimmedString("Subgrupo de doação inválido"),
+    subgrupo_doacao_outros: optionalNonEmptyTrimmedString("Outros subgrupo de doação inválido"),
+    beneficiario_doacao: optionalNonEmptyTrimmedString("Beneficiário da doação inválido"),
     genero: z.enum(generoValues),
     brinde_id: z.string().uuid("Brinde inválido").optional(),
     marca: optionalNonEmptyTrimmedString("Marca obrigatoria"),
@@ -67,6 +70,7 @@ export const createSolicitacaoSchema = z
   })
   .superRefine((data, ctx) => {
     const isCampanha = data.tipo_requisicao === "campanha";
+    const isDoacao = data.tipo_requisicao === "doacao";
     const isTesteCalce = data.tipo_requisicao === "teste_calce";
 
     if (isCampanha && !data.subgrupo_campanha) {
@@ -82,6 +86,30 @@ export const createSolicitacaoSchema = z
         code: "custom",
         message: "Subgrupo de campanha permitido apenas para tipo campanha",
         path: ["subgrupo_campanha"],
+      });
+    }
+
+    if (isDoacao && !data.subgrupo_doacao) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Subgrupo de doação obrigatório",
+        path: ["subgrupo_doacao"],
+      });
+    }
+
+    if (isDoacao && data.subgrupo_doacao === "outros" && !data.subgrupo_doacao_outros) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Especifique o tipo de doação em 'outros'",
+        path: ["subgrupo_doacao_outros"],
+      });
+    }
+
+    if (isDoacao && data.subgrupo_doacao && data.subgrupo_doacao !== "interna" && !data.beneficiario_doacao) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Nome de quem vai receber a doação é obrigatório",
+        path: ["beneficiario_doacao"],
       });
     }
 

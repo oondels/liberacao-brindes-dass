@@ -87,6 +87,15 @@ export class SolicitacaoBrinde {
   })
   subgrupo_campanha?: SubgrupoCampanha;
 
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  subgrupo_doacao?: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  subgrupo_doacao_outros?: string | null;
+
+  @Column({ type: 'varchar', length: 150, nullable: true })
+  beneficiario_doacao?: string | null;
+
   @OneToOne(() => VoucherSolicitacao, (voucher) => voucher.solicitacao)
   voucher?: VoucherSolicitacao;
 
