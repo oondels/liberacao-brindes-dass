@@ -16,10 +16,16 @@ export interface DecodedToken {
   nivel: string;
   unidade: string;
   funcao: string;
+  is_admin?: boolean;
 }
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
-  const token = req.cookies.token;
+  const authHeader = req.headers.authorization;
+  const bearerToken = authHeader && authHeader.startsWith("Bearer ")
+    ? authHeader.slice(7).trim()
+    : null;
+  const token = bearerToken || req.cookies?.token;
+
   if (!token) {
     return next(new CustomError("Token de autenticação não encontrado", 401));
   }
@@ -36,5 +42,5 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
 
     req.user = decoded as DecodedToken;
     next();
-  })
-}
+  });
+};

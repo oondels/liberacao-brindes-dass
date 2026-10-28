@@ -19,8 +19,8 @@ export const isManager = async (req: Request, _res: Response, next: NextFunction
   }
 
   const role = user.funcao?.toLowerCase() || "";
-  const sector = user.setor?.toLowerCase() || "";
-  if (!role.includes("gerente") && sector !== "automacao") {
+  const isAdmin = Boolean(user.is_admin);
+  if (!role.includes("gerente") && !isAdmin) {
     throw new CustomError("Usuário não autorizado! Somente gerentes podem acessar esta funcionalidade", 403);
   }
 

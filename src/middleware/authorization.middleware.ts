@@ -8,7 +8,7 @@ import { UserCriacaoSolicitacao } from "../models/UserCriacaoSolicitacao";
 import { UserSeparacao } from "../models/UserSeparacao";
 import { CustomError } from "../types/CustomError";
 
-export const MASTER_ADMIN_SECTOR = "automacao";
+export const MASTER_ADMIN_SECTOR = "";
 
 export type AuthorizationContext = {
   isMasterAdmin: boolean;
@@ -69,8 +69,7 @@ export const loadAuthorizationContext = async (req: Request): Promise<Authorizat
   }
 
   const matricula = getAuthenticatedMatricula(req);
-  const userSector = req.user?.setor?.toLowerCase().trim() ?? "";
-  const isMasterAdmin = userSector === MASTER_ADMIN_SECTOR;
+  const isMasterAdmin = Boolean(req.user?.is_admin);
 
   const [userAdmin, userAprovacao, userSeparacao, userCriacao, userBipagem] = await Promise.all([
     isMasterAdmin
