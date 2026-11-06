@@ -16,25 +16,39 @@ export interface DecodedToken {
   nivel: string;
   unidade: string;
   funcao: string;
+  is_admin?: boolean;
 }
 
-export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
-  const token = req.cookies.token;
-  if (!token) {
+export const extractCandidateTokens = (req: Request): string[] => {
+  const authHeader = req.headers?.authorization;
+  const bearerToken = authHeader && /^Bearer\s+/i.test(authHeader)
+    ? authHeader.replace(/^Bearer\s+/i, "").trim()
+    : null;
+  const cookieToken = req.cookies?.token ? String(req.cookies.token).trim() : null;
+  const candidates = [cookieToken, bearerToken].filter((t): t is string => Boolean(t));
+  return [...new Set(candidates)];
+};
+
+export const authenticateToken = (req: Request, _res: Response, next: NextFunction) => {
+  const tokens = extractCandidateTokens(req);
+
+  if (tokens.length === 0) {
     return next(new CustomError("Token de autenticação não encontrado", 401));
   }
 
-  jwt.verify(token, PRIVATE_KEY, (error: jwt.VerifyErrors | null, decoded: jwt.JwtPayload | string | undefined) => {
-    if (error) {
-      console.error("Erro ao verificar token JWT: ", error);
-      return next(new CustomError("Token de autenticação inválido", 401));
+  let lastError: unknown = null;
+  for (const token of tokens) {
+    try {
+      const decoded = jwt.verify(token, PRIVATE_KEY);
+      if (decoded && typeof decoded !== "string") {
+        req.user = decoded as DecodedToken;
+        return next();
+      }
+    } catch (error) {
+      lastError = error;
     }
+  }
 
-    if (!decoded || typeof decoded === "string") {
-      return next(new CustomError("Token de autenticação inválido", 401));
-    }
-
-    req.user = decoded as DecodedToken;
-    next();
-  })
-}
+  console.error("Erro ao verificar token JWT: ", lastError);
+  return next(new CustomError("Token de autenticação inválido", 401));
+};
