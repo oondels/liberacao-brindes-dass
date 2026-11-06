@@ -46,6 +46,38 @@ const normalizePermissions = (tipos?: TipoRequisicao[] | null): TipoRequisicao[]
 const uniquePermissions = (...groups: TipoRequisicao[][]): TipoRequisicao[] =>
   [...new Set(groups.flat())];
 
+export const resolveIsCentralAdmin = async (req: Request): Promise<boolean> => {
+  if (typeof req.user?.is_admin === "boolean") {
+    return req.user.is_admin;
+  }
+
+  const matricula = req.user?.matricula ? String(req.user.matricula).trim() : null;
+  const usuario = req.user?.usuario ? String(req.user.usuario).trim() : null;
+
+  if (AppDataSource.isInitialized && (matricula || usuario)) {
+    try {
+      const rows = await AppDataSource.query(
+        `SELECT is_admin FROM autenticacao.usuarios
+         WHERE (matricula::text = $1 AND $1 IS NOT NULL)
+            OR (UPPER(TRIM(usuario)) = UPPER(TRIM($2)) AND $2 IS NOT NULL)
+         LIMIT 1`,
+        [matricula, usuario]
+      );
+      if (Array.isArray(rows) && rows.length > 0) {
+        const isAdmin = Boolean(rows[0]?.is_admin);
+        if (req.user) {
+          req.user.is_admin = isAdmin;
+        }
+        return isAdmin;
+      }
+    } catch (error) {
+      console.error("Erro ao consultar is_admin em autenticacao.usuarios:", error);
+    }
+  }
+
+  return Boolean(req.user?.is_admin);
+};
+
 export const loadAuthorizationContext = async (req: Request): Promise<AuthorizationContext> => {
   if (
     req.allowedSolicitacaoTypes !== undefined
@@ -69,7 +101,7 @@ export const loadAuthorizationContext = async (req: Request): Promise<Authorizat
   }
 
   const matricula = getAuthenticatedMatricula(req);
-  const isMasterAdmin = Boolean(req.user?.is_admin);
+  const isMasterAdmin = await resolveIsCentralAdmin(req);
 
   const [userAdmin, userAprovacao, userSeparacao, userCriacao, userBipagem] = await Promise.all([
     isMasterAdmin
